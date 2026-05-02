@@ -1,0 +1,26 @@
+# gaffur
+
+> gaffur.net — yeni dönem için hazırlanıyor.
+
+Domain 2026-05-02 itibariyle yeniden aktif. Şu an placeholder durumda.
+
+## Hakkında
+
+gaffur.net 2013-2014 döneminde aktif olarak kullanılmış, sonra 12 yıl boşta
+kalmış ve 2026 Mayıs ayında tekrar kayıt altına alınmıştır. Şu an içerik
+konsepti netleşene kadar tek sayfalık placeholder olarak yayınlanmaktadır.
+
+## Konsept
+
+İçerik konsepti henüz finalize edilmedi. Olası yönler değerlendiriliyor:
+- Türkçe SEO/GEO/AI yazılım geliştirme uzmanlık platformu
+- Mikro web araçları ailesi
+- AI-native vertical agent ürünü
+- Anadolu zanaat kürasyon ve hikâye platformu
+
+Konsept netleştiğinde bu dosya tam içerik haritasıyla güncellenecektir.
+
+## İletişim
+- E-posta: emociksin@gmail.com
+- Anasayfa: https://gaffur.net/
+- Güvenlik: https://gaffur.net/.well-known/security.txt

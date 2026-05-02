@@ -1,0 +1,44 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*~
+.cursorignore
+
+# Node (ileride eklenirse)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build artifacts
+dist/
+build/
+.next/
+.cloudflare/
+.wrangler/
+.vercel/
+
+# Environment
+.env
+.env.local
+.env.*.local
+.dev.vars
+
+# Logs
+*.log
+
+# Secrets / keys
+*.pem
+*.key
+*-private.key
+
+# Lokal not dosyalari
+notes-local.md
+*.draft.md

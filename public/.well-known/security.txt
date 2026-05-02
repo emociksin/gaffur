@@ -1,0 +1,4 @@
+Contact: mailto:emociksin@gmail.com
+Expires: 2027-05-02T19:48:54Z
+Preferred-Languages: tr, en
+Canonical: https://gaffur.net/.well-known/security.txt

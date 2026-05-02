@@ -1,0 +1,13 @@
+# gaffur
+
+> gaffur.net — yeni dönem için hazırlanıyor.
+
+Domain 2026-05-02 itibariyle yeniden aktif. Şu an placeholder durumda.
+İçerik konsepti netleştiğinde bu dosya güncellenecek.
+
+## İletişim
+- [Anasayfa](https://gaffur.net/)
+- [Güvenlik](https://gaffur.net/.well-known/security.txt)
+
+## Optional
+- [Tam içerik haritası](https://gaffur.net/llms-full.txt)
