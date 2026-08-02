@@ -4,7 +4,7 @@ import type { Category, HistoryPoint, Notification, Product } from '../../shared
 import { api } from '../api';
 import { dateFull, money, pctFmt, timeAgo } from '../format';
 import { PriceChart } from './Chart';
-import { IconCheck, IconDownload, IconExternal, IconRefresh, IconTrash, Modal, SiteBadge, Spinner, useToast } from '../ui';
+import { IconCheck, IconDownload, IconExternal, IconRefresh, IconTrash, Modal, SiteBadge, Spinner, useIsAdmin, useToast } from '../ui';
 
 const RANGES: [number, string][] = [
   [7, '7g'],
@@ -25,6 +25,7 @@ export function DetailModal({
   refresh: () => Promise<void>;
 }) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [days, setDays] = useState(90);
   const [data, setData] = useState<{ product: Product; history: HistoryPoint[]; notifications: Notification[] } | null>(
     null
@@ -143,20 +144,24 @@ export function DetailModal({
             <a className="btn btn-ghost btn-sm" href={p.url} target="_blank" rel="noreferrer">
               <IconExternal size={14} /> Ürüne git
             </a>
-            <button className="btn btn-ghost btn-sm" onClick={checkNow} disabled={checking}>
-              {checking ? <Spinner size={13} /> : <IconRefresh size={14} />} Şimdi kontrol et
-            </button>
-            <a className="btn btn-ghost btn-sm" href={`/api/export/history.csv?product_id=${p.id}`} download>
-              <IconDownload size={14} /> CSV
-            </a>
-            {!confirmDel ? (
-              <button className="btn btn-ghost btn-sm btn-danger" onClick={() => setConfirmDel(true)}>
-                <IconTrash size={14} /> Sil
-              </button>
-            ) : (
-              <button className="btn btn-sm btn-dangerfill" onClick={del}>
-                Emin misin? Evet, sil
-              </button>
+            {isAdmin && (
+              <>
+                <button className="btn btn-ghost btn-sm" onClick={checkNow} disabled={checking}>
+                  {checking ? <Spinner size={13} /> : <IconRefresh size={14} />} Şimdi kontrol et
+                </button>
+                <a className="btn btn-ghost btn-sm" href={`/api/export/history.csv?product_id=${p.id}`} download>
+                  <IconDownload size={14} /> CSV
+                </a>
+                {!confirmDel ? (
+                  <button className="btn btn-ghost btn-sm btn-danger" onClick={() => setConfirmDel(true)}>
+                    <IconTrash size={14} /> Sil
+                  </button>
+                ) : (
+                  <button className="btn btn-sm btn-dangerfill" onClick={del}>
+                    Emin misin? Evet, sil
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -212,6 +217,9 @@ export function DetailModal({
       </div>
       <PriceChart points={hist} currency={p.currency} targetPrice={p.target_price} />
 
+      {/* Takip ayarlari ve bildirim gecmisi yalnizca yoneticiye gorunur */}
+      {isAdmin && (
+        <>
       <h3 className="sec-title">Takip ayarları</h3>
       <div className="form-grid">
         <label>
@@ -298,6 +306,8 @@ export function DetailModal({
               </li>
             ))}
           </ul>
+        </>
+      )}
         </>
       )}
     </Modal>

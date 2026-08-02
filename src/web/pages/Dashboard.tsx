@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Category, Product, Summary } from '../../shared/types';
 import { changePct, money, pctFmt, timeAgo } from '../format';
-import { IconBox, IconPlus, IconSearch, IconRefresh, Spinner, useToast } from '../ui';
+import { IconBox, IconPlus, IconSearch, IconRefresh, Spinner, useIsAdmin, useToast } from '../ui';
 import { ProductCard } from '../components/ProductCard';
 import { api } from '../api';
 
@@ -23,6 +23,7 @@ export function Dashboard({
   refresh: () => Promise<void>;
 }) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [catFilter, setCatFilter] = useState<number | 'all' | 'none'>('all');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('new');
@@ -153,7 +154,7 @@ export function Dashboard({
         </div>
       </section>
 
-      {activeCat?.source_url && (
+      {isAdmin && activeCat?.source_url && (
         <div className="cat-source">
           <span>
             Bu kategori bir Trendyol listesine bağlı — yeni ürünler otomatik keşfedilir (6 saatte bir).
@@ -173,16 +174,23 @@ export function Dashboard({
         <div className="empty">
           <IconBox size={44} />
           {products.length === 0 ? (
-            <>
-              <h2>Henüz ürün takip etmiyorsun</h2>
-              <p>
-                Trendyol, Hepsiburada, Amazon veya N11'den bir ürün bağlantısı yapıştır — Gaffur fiyatı düzenli kontrol
-                edip düşünce haber versin.
-              </p>
-              <button className="btn btn-primary" onClick={onAdd}>
-                <IconPlus size={16} /> İlk ürünü ekle
-              </button>
-            </>
+            isAdmin ? (
+              <>
+                <h2>Henüz ürün takip etmiyorsun</h2>
+                <p>
+                  Trendyol, Hepsiburada, Amazon veya N11'den bir ürün bağlantısı yapıştır — Gaffur fiyatı düzenli
+                  kontrol edip düşünce haber versin.
+                </p>
+                <button className="btn btn-primary" onClick={onAdd}>
+                  <IconPlus size={16} /> İlk ürünü ekle
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>Takip listesi henüz boş</h2>
+                <p>Ürünler eklendikçe güncel ve en düşük fiyatları burada göreceksin.</p>
+              </>
+            )
           ) : (
             <>
               <h2>Sonuç yok</h2>

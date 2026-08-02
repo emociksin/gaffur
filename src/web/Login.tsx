@@ -2,10 +2,22 @@ import { useState } from 'react';
 import { api } from './api';
 import { BrandSign, Spinner } from './ui';
 
-export function Login({ onSuccess }: { onSuccess: () => void }) {
+export function Login({
+  onSuccess,
+  onCancel,
+  configured = true,
+}: {
+  onSuccess: () => void;
+  onCancel?: () => void;
+  configured?: boolean;
+}) {
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // Sunucuda parola tanimli degilse giris denemek anlamsiz (503 doner);
+  // ne yapilmasi gerektigi anlatilir.
+  if (!configured) return <SetupNotice onCancel={onCancel} />;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +50,11 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
         <button className="btn btn-primary btn-block" disabled={busy || !pw}>
           {busy ? <Spinner size={15} /> : 'Giriş'}
         </button>
+        {onCancel && (
+          <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
+            Siteye dön
+          </button>
+        )}
       </form>
     </div>
   );
@@ -47,15 +64,17 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
  * PASSWORD secret'i tanimli degilken gosterilir. Uygulama bu durumda
  * fail-closed calisir (API 503 doner), yani panel disariya acilmaz.
  */
-export function SetupNotice() {
+export function SetupNotice({ onCancel }: { onCancel?: () => void }) {
   return (
     <div className="login-page">
       <div className="login-card setup-card">
         <BrandSign lg />
-        <p className="login-sub">Kurulum tamamlanmadı</p>
+        <p className="login-sub">Yönetim henüz açılmadı</p>
         <div className="setup-warn">
-          Yönetim parolası tanımlı olmadığı için uygulama kilitli. Bu bilinçli bir güvenlik
-          önlemi: parola olmadan panel herkese açık olurdu.
+          Site ziyaretçilere açık ve çalışıyor; ürünler ve fiyatlar herkes tarafından
+          görülebiliyor. Ancak <b>yönetim</b> (ürün ekleme/silme, ayarlar) parola tanımlı
+          olmadığı için kapalı — parolasız açılsaydı Telegram ve Firecrawl anahtarların da
+          herkese görünür olurdu.
         </div>
         <p className="mut small">
           Kendi sunucunda (Coolify/Docker): <b>Environment Variables</b> bölümüne aşağıdaki
@@ -69,6 +88,11 @@ export function SetupNotice() {
           Yerel geliştirmede parolasız çalışmak istersen proje kökündeki <code>.dev.vars</code>{' '}
           dosyasına <code>ALLOW_OPEN=1</code> yaz. Bu dosya deploy edilmez.
         </p>
+        {onCancel && (
+          <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
+            Siteye dön
+          </button>
+        )}
       </div>
     </div>
   );

@@ -133,6 +133,13 @@ export function Spinner({ size = 16 }: { size?: number }) {
   return <span className="spinner" style={{ width: size, height: size }} aria-label="yükleniyor" />;
 }
 
+// ---- yonetici baglami ----
+// Ziyaretci siteyi gezebilir ama yonetim kontrollerini gormez. Sunucu tarafi
+// zaten koruyor; bu yalnizca arayuzun dogru gorunmesi icin.
+const AdminCtx = createContext(false);
+export const AdminProvider = AdminCtx.Provider;
+export const useIsAdmin = () => useContext(AdminCtx);
+
 // ---- toast ----
 type Toast = { id: number; text: string; kind: 'ok' | 'err' | 'info' };
 const ToastCtx = createContext<(text: string, kind?: Toast['kind']) => void>(() => {});

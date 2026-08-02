@@ -7,7 +7,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AddModal } from './components/AddModal';
 import { DetailModal } from './components/DetailModal';
-import { BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Spinner, useToast } from './ui';
+import { AdminProvider, BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Spinner, useToast } from './ui';
 
 type Tab = 'panel' | 'bildirim' | 'ayar';
 
@@ -29,6 +29,7 @@ export default function App() {
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [checkingAll, setCheckingAll] = useState<{ done: number } | null>(null);
   const checkingRef = useRef(false);
@@ -49,7 +50,7 @@ export default function App() {
       .me()
       .then((m) => {
         setAuth({ loading: false, authed: m.authed, open: m.open, configured: m.configured });
-        if (m.authed) refresh();
+        refresh(); // ziyaretci de listeyi gorur; okuma uclari herkese acik
       })
       .catch(() => setAuth({ loading: false, authed: false, open: false, configured: true }));
     const onUnauth = () => setAuth((a) => ({ ...a, authed: false }));
@@ -57,12 +58,11 @@ export default function App() {
     return () => window.removeEventListener('gfr-unauthorized', onUnauth);
   }, [refresh]);
 
-  // arka plan tazeleme
+  // arka plan tazeleme (ziyaretci icin de calisir; okuma uclari acik)
   useEffect(() => {
-    if (!auth.authed) return;
     const iv = setInterval(refresh, 60_000);
     return () => clearInterval(iv);
-  }, [auth.authed, refresh]);
+  }, [refresh]);
 
   const checkAll = useCallback(async () => {
     if (checkingRef.current) return;
@@ -94,60 +94,74 @@ export default function App() {
     );
   }
 
-  // Parola yok VE acik mod da kapaliysa uygulama kilitli: parola sormak
-  // anlamsiz (giris de 503 doner), kurulumun nasil tamamlanacagi anlatilir.
-  // Yerel acik modda (ALLOW_OPEN=1) uygulama normal calisir.
-  if (!auth.configured && !auth.open) {
-    return <SetupNotice />;
-  }
+  // Ziyaretci giris yapmadan siteyi gezebilir: urunler, fiyatlar, grafikler
+  // herkese acik. Yonetim (ekleme/silme/ayarlar) parola ister.
+  const isAdmin = auth.authed || auth.open;
 
-  if (!auth.authed) {
+  if (showLogin && !isAdmin) {
     return (
       <Login
         onSuccess={() => {
+          setShowLogin(false);
           setAuth((a) => ({ ...a, authed: true }));
           refresh();
         }}
+        onCancel={() => setShowLogin(false)}
+        configured={auth.configured}
       />
     );
   }
 
   const unread = summary?.unread ?? 0;
+  const activeTab = isAdmin ? tab : 'panel'; // ziyaretci yalnizca panoyu gorur
 
   return (
+    <AdminProvider value={isAdmin}>
     <div className="app">
       <header className="hdr">
         <div className="brand" onClick={() => setTab('panel')} role="button" tabIndex={0}>
           <BrandSign />
         </div>
-        <nav className="tabs" aria-label="Sayfalar">
-          <button className={tab === 'panel' ? 'on' : ''} onClick={() => setTab('panel')}>
-            Panel
-          </button>
-          <button className={tab === 'bildirim' ? 'on' : ''} onClick={() => setTab('bildirim')}>
-            <IconBell size={16} />
-            Bildirimler
-            {unread > 0 && <span className="badge">{unread > 99 ? '99+' : unread}</span>}
-          </button>
-          <button className={tab === 'ayar' ? 'on' : ''} onClick={() => setTab('ayar')}>
-            <IconGear size={16} />
-            Ayarlar
-          </button>
-        </nav>
+        {isAdmin ? (
+          <nav className="tabs" aria-label="Sayfalar">
+            <button className={tab === 'panel' ? 'on' : ''} onClick={() => setTab('panel')}>
+              Panel
+            </button>
+            <button className={tab === 'bildirim' ? 'on' : ''} onClick={() => setTab('bildirim')}>
+              <IconBell size={16} />
+              Bildirimler
+              {unread > 0 && <span className="badge">{unread > 99 ? '99+' : unread}</span>}
+            </button>
+            <button className={tab === 'ayar' ? 'on' : ''} onClick={() => setTab('ayar')}>
+              <IconGear size={16} />
+              Ayarlar
+            </button>
+          </nav>
+        ) : (
+          <p className="hdr-tagline">Takip edilen ürünlerin güncel ve en düşük fiyatları</p>
+        )}
         <div className="hdr-actions">
-          <button className="btn btn-ghost" onClick={checkAll} disabled={!!checkingAll} title="Tüm ürünleri şimdi kontrol et">
-            {checkingAll ? <Spinner size={15} /> : <IconRefresh size={16} />}
-            <span className="hide-sm">{checkingAll ? `Kontrol ediliyor… ${checkingAll.done}` : 'Şimdi Kontrol Et'}</span>
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            <IconPlus size={16} />
-            <span className="hide-sm">Ürün Ekle</span>
-          </button>
+          {isAdmin ? (
+            <>
+              <button className="btn btn-ghost" onClick={checkAll} disabled={!!checkingAll} title="Tüm ürünleri şimdi kontrol et">
+                {checkingAll ? <Spinner size={15} /> : <IconRefresh size={16} />}
+                <span className="hide-sm">{checkingAll ? `Kontrol ediliyor… ${checkingAll.done}` : 'Şimdi Kontrol Et'}</span>
+              </button>
+              <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+                <IconPlus size={16} />
+                <span className="hide-sm">Ürün Ekle</span>
+              </button>
+            </>
+          ) : (
+            <button className="btn btn-ghost" onClick={() => setShowLogin(true)}>
+              Yönetim girişi
+            </button>
+          )}
         </div>
       </header>
 
       <main className="main">
-        {tab === 'panel' && (
+        {activeTab === 'panel' && (
           <Dashboard
             products={products}
             cats={cats}
@@ -157,8 +171,8 @@ export default function App() {
             refresh={refresh}
           />
         )}
-        {tab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
-        {tab === 'ayar' && <SettingsPage open={auth.open} />}
+        {activeTab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
+        {activeTab === 'ayar' && <SettingsPage open={auth.open} />}
       </main>
 
       {showAdd && (
@@ -186,5 +200,6 @@ export default function App() {
         <span>{summary ? `${summary.active} ürün takipte` : ''}</span>
       </footer>
     </div>
+    </AdminProvider>
   );
 }

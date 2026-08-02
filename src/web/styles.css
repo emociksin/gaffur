@@ -1799,3 +1799,9 @@ textarea:focus {
   color: var(--red);
   border-color: #B23A2B45;
 }
+
+.hdr-tagline {
+  color: var(--mut);
+  font-size: 0.9rem;
+  margin: 0;
+}

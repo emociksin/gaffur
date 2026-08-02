@@ -3,7 +3,7 @@ import type { Category, Product } from '../../shared/types';
 import { changePct, money, pctFmt, timeAgo } from '../format';
 import { api } from '../api';
 import { Sparkline } from './Chart';
-import { IconAlert, IconRefresh, IconTag, SiteBadge, Spinner, useToast } from '../ui';
+import { IconAlert, IconRefresh, IconTag, SiteBadge, Spinner, useIsAdmin, useToast } from '../ui';
 
 export function ProductCard({
   p,
@@ -17,6 +17,7 @@ export function ProductCard({
   refresh: () => Promise<void>;
 }) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [checking, setChecking] = useState(false);
   const chg = changePct(p);
   const isErr = p.fail_count >= 3;
@@ -105,9 +106,11 @@ export function ProductCard({
         </div>
       </div>
 
-      <button className="card-check" onClick={quickCheck} disabled={checking} title="Şimdi kontrol et">
-        {checking ? <Spinner size={14} /> : <IconRefresh size={14} />}
-      </button>
+      {isAdmin && (
+        <button className="card-check" onClick={quickCheck} disabled={checking} title="Şimdi kontrol et">
+          {checking ? <Spinner size={14} /> : <IconRefresh size={14} />}
+        </button>
+      )}
     </article>
   );
 }

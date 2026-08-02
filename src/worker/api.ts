@@ -65,6 +65,27 @@ async function clearRateLimit(env: Env, ip: string): Promise<void> {
 const isPublicPath = (path: string) =>
   path === '/api/login' || path === '/api/me' || path === '/api/health';
 
+/**
+ * ZIYARETCIYE ACIK OKUMA UCLARI.
+ * Site herkese acik bir fiyat takip vitrini: urunler, fiyatlar, gecmis ve
+ * kategoriler oturumsuz okunabilir. Listeye SADECE veri degistirmeyen ve
+ * gizli bilgi tasimayan GET'ler girer.
+ *
+ * Bilerek DISARIDA birakilanlar:
+ *   /settings        -> Telegram token'i ve Firecrawl anahtari
+ *   /notifications   -> operasyon gurultusu
+ *   /export/*.csv    -> toplu veri disari aktarimi
+ *   /preview, /check-all, /cron/run -> dis istek + kredi harcatir
+ */
+const PUBLIC_READS: RegExp[] = [
+  /^\/api\/summary$/,
+  /^\/api\/products$/,
+  /^\/api\/products\/\d+$/,
+  /^\/api\/categories$/,
+];
+const isPublicRead = (method: string, path: string) =>
+  method === 'GET' && PUBLIC_READS.some((r) => r.test(path));
+
 // ---- CSRF: veri degistiren isteklerde Origin ayni site olmali ----
 // Cerez zaten SameSite=Strict ama Hono govdeyi text/plain ve form
 // content-type'lariyla da JSON olarak ayristirdigi icin ikinci kemer.
@@ -85,23 +106,24 @@ api.use('*', async (c, next) => {
 });
 
 // ---- auth middleware ----
-// FAIL-CLOSED: PASSWORD tanimli degilse uygulama acilmaz, kilitlenir.
-// (Eskiden parola yoksa TUM API herkese aciktu; secret'siz bir deploy
-//  paneli internete acik birakiyordu.)
+// Site herkese acik bir vitrin: okuma uclari (PUBLIC_READS) oturumsuz calisir.
+// Veri degistiren her sey ve gizli bilgi tasiyan uclar parola ister.
+// FAIL-CLOSED: PASSWORD tanimli degilse YONETIM kilitli kalir (vitrin acik olur);
+// aksi halde secret'siz bir deploy paneli internete acik birakirdi.
 api.use('*', async (c, next) => {
   const pw = c.env.PASSWORD;
   const path = c.req.path;
 
+  if (isPublicPath(path) || isPublicRead(c.req.method, path)) return next();
+
   if (!pw) {
     if (openModeAllowed(c.env)) return next();
-    if (isPublicPath(path)) return next();
     return c.json(
-      { error: 'Sunucu yapılandırılmamış: PASSWORD secret tanımlı değil.', configured: false },
+      { error: 'Yönetim kapalı: sunucuda PASSWORD tanımlı değil.', configured: false },
       503
     );
   }
 
-  if (isPublicPath(path)) return next();
   const ok = await checkSession(c.env, readSessionCookie(c));
   if (!ok) return c.json({ error: 'Oturum gerekli' }, 401);
   return next();
