@@ -32,7 +32,10 @@ app.use('*', async (c, next) => {
   h.set('x-frame-options', 'DENY');
   h.set('referrer-policy', 'strict-origin-when-cross-origin');
   h.set('permissions-policy', 'geolocation=(), microphone=(), camera=(), payment=()');
-  if (new URL(c.req.url).protocol === 'https:') {
+  // Ters vekil (Traefik/Cloudflare) arkasinda istek Node'a http olarak gelir;
+  // gercek sema X-Forwarded-Proto'da olur. Aksi halde HSTS hic gonderilmiyordu.
+  const proto = c.req.header('x-forwarded-proto') || new URL(c.req.url).protocol.replace(':', '');
+  if (proto === 'https') {
     h.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
   }
   c.res = new Response(c.res.body, { status: c.res.status, statusText: c.res.statusText, headers: h });
