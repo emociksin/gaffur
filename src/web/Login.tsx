@@ -57,8 +57,14 @@ export function SetupNotice() {
           Yönetim parolası tanımlı olmadığı için uygulama kilitli. Bu bilinçli bir güvenlik
           önlemi: parola olmadan panel herkese açık olurdu.
         </div>
-        <p className="mut small">Sunucuda tek komut yeterli, sonra sayfayı yenile:</p>
-        <code className="setup-cmd">npx wrangler secret put PASSWORD</code>
+        <p className="mut small">
+          Kendi sunucunda (Coolify/Docker): <b>Environment Variables</b> bölümüne aşağıdaki
+          değişkeni ekle, değeri kendi belirlediğin parola olsun, sonra yeniden dağıt.
+        </p>
+        <code className="setup-cmd">PASSWORD=&lt;seçtiğin parola&gt;</code>
+        <p className="mut small">
+          Cloudflare Workers'a dağıtıyorsan: <code>npx wrangler secret put PASSWORD</code>
+        </p>
         <p className="mut small">
           Yerel geliştirmede parolasız çalışmak istersen proje kökündeki <code>.dev.vars</code>{' '}
           dosyasına <code>ALLOW_OPEN=1</code> yaz. Bu dosya deploy edilmez.
