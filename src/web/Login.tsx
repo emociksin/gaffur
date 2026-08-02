@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from './api';
-import { IconTag, Spinner } from './ui';
+import { BrandSign, Spinner } from './ui';
 
 export function Login({ onSuccess }: { onSuccess: () => void }) {
   const [pw, setPw] = useState('');
@@ -24,10 +24,7 @@ export function Login({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="login-page">
       <form className={`login-card ${err ? 'shake' : ''}`} onSubmit={submit}>
-        <span className="brand-mark brand-mark-lg">
-          <IconTag size={28} />
-        </span>
-        <h1>GAFFUR</h1>
+        <BrandSign lg />
         <p className="login-sub">Fiyatları senin yerine kollar.</p>
         <input
           type="password"
@@ -54,10 +51,7 @@ export function SetupNotice() {
   return (
     <div className="login-page">
       <div className="login-card setup-card">
-        <span className="brand-mark brand-mark-lg">
-          <IconTag size={28} />
-        </span>
-        <h1>GAFFUR</h1>
+        <BrandSign lg />
         <p className="login-sub">Kurulum tamamlanmadı</p>
         <div className="setup-warn">
           Yönetim parolası tanımlı olmadığı için uygulama kilitli. Bu bilinçli bir güvenlik

@@ -478,7 +478,7 @@ api.post('/categories', async (c) => {
     .catch(() => ({}) as any);
   const name = String(body.name ?? '').trim();
   if (!name) return c.json({ error: 'Kategori adı gerekli' }, 400);
-  const color = /^#[0-9a-fA-F]{6}$/.test(String(body.color)) ? String(body.color) : '#FFB020';
+  const color = /^#[0-9a-fA-F]{6}$/.test(String(body.color)) ? String(body.color) : '#E4611C';
   const sourceUrl = String(body.source_url ?? '').trim() || null;
   if (sourceUrl && !isListingUrl(sourceUrl)) {
     return c.json(

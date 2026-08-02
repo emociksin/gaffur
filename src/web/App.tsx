@@ -7,7 +7,7 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { AddModal } from './components/AddModal';
 import { DetailModal } from './components/DetailModal';
-import { IconBell, IconGear, IconPlus, IconRefresh, IconTag, Spinner, useToast } from './ui';
+import { BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Spinner, useToast } from './ui';
 
 type Tab = 'panel' | 'bildirim' | 'ayar';
 
@@ -118,12 +118,7 @@ export default function App() {
     <div className="app">
       <header className="hdr">
         <div className="brand" onClick={() => setTab('panel')} role="button" tabIndex={0}>
-          <span className="brand-mark">
-            <IconTag size={20} />
-          </span>
-          <span className="brand-text">
-            GAFFUR<small>fiyat takip</small>
-          </span>
+          <BrandSign />
         </div>
         <nav className="tabs" aria-label="Sayfalar">
           <button className={tab === 'panel' ? 'on' : ''} onClick={() => setTab('panel')}>

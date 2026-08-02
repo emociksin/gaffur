@@ -1,10 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
-  <rect width="1200" height="630" fill="#0a0a0a"/>
-  <text x="600" y="320" text-anchor="middle" dominant-baseline="middle"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="200" font-weight="200" fill="#f5f5f5" letter-spacing="-10">gaffur</text>
-  <rect x="836" y="220" width="14" height="160" fill="#d97706"/>
-  <text x="600" y="430" text-anchor="middle" dominant-baseline="middle"
-        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
-        font-size="32" font-weight="400" fill="#737373" letter-spacing="2">YENİDEN</text>
+  <rect width="1200" height="630" fill="#F4EDDD"/>
+  <circle cx="150" cy="70" r="230" fill="#FFFDF6" opacity="0.75"/>
+  <circle cx="1080" cy="120" r="190" fill="#FBF6EA" opacity="0.65"/>
+
+  <!-- damali fayans seridi -->
+  <rect y="558" width="1200" height="72" fill="#F2E5D6"/>
+  <g fill="#CE9179">
+    <rect x="0" y="558" width="36" height="36"/><rect x="36" y="594" width="36" height="36"/>
+    <rect x="72" y="558" width="36" height="36"/><rect x="108" y="594" width="36" height="36"/>
+    <rect x="144" y="558" width="36" height="36"/><rect x="180" y="594" width="36" height="36"/>
+    <rect x="216" y="558" width="36" height="36"/><rect x="252" y="594" width="36" height="36"/>
+    <rect x="288" y="558" width="36" height="36"/><rect x="324" y="594" width="36" height="36"/>
+    <rect x="360" y="558" width="36" height="36"/><rect x="396" y="594" width="36" height="36"/>
+    <rect x="432" y="558" width="36" height="36"/><rect x="468" y="594" width="36" height="36"/>
+    <rect x="504" y="558" width="36" height="36"/><rect x="540" y="594" width="36" height="36"/>
+    <rect x="576" y="558" width="36" height="36"/><rect x="612" y="594" width="36" height="36"/>
+    <rect x="648" y="558" width="36" height="36"/><rect x="684" y="594" width="36" height="36"/>
+    <rect x="720" y="558" width="36" height="36"/><rect x="756" y="594" width="36" height="36"/>
+    <rect x="792" y="558" width="36" height="36"/><rect x="828" y="594" width="36" height="36"/>
+    <rect x="864" y="558" width="36" height="36"/><rect x="900" y="594" width="36" height="36"/>
+    <rect x="936" y="558" width="36" height="36"/><rect x="972" y="594" width="36" height="36"/>
+    <rect x="1008" y="558" width="36" height="36"/><rect x="1044" y="594" width="36" height="36"/>
+    <rect x="1080" y="558" width="36" height="36"/><rect x="1116" y="594" width="36" height="36"/>
+    <rect x="1152" y="558" width="36" height="36"/><rect x="1188" y="594" width="12" height="36"/>
+  </g>
+
+  <!-- emaye tabela -->
+  <rect x="186" y="176" width="828" height="264" rx="6" fill="#1E1A16"/>
+  <rect x="180" y="170" width="828" height="264" rx="6" fill="#FFFCF4" stroke="#1E1A16" stroke-width="10"/>
+  <circle cx="706" cy="268" r="60" fill="#E4611C"/>
+  <text x="594" y="302" font-family="Haettenschweiler, 'Arial Narrow', Impact, sans-serif" font-size="146" font-weight="900" text-anchor="middle" fill="#1E1A16" letter-spacing="1">GAFFUR</text>
+  <text x="594" y="372" font-family="Georgia, 'Times New Roman', serif" font-size="40" text-anchor="middle" fill="#B23A2B" letter-spacing="14">FİYAT TAKİP</text>
+
+  <text x="600" y="508" font-family="Georgia, 'Times New Roman', serif" font-size="34" text-anchor="middle" fill="#7C6E5C">gaffur.net — fiyatları senin yerine kollar</text>
 </svg>

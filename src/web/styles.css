@@ -1,22 +1,29 @@
-/* Gaffur — koyu tema tasarim sistemi */
+/* Gaffur — "Yeni Gün Kahvaltı Salonu" tasarim sistemi.
+   Palet dogrudan mahalle esnaf tabelasindan alindi: badanali kirli beyaz duvar,
+   tabeladaki turuncu gunes dairesi, kalin siyah harfler, kirmizi alt yazi ve
+   zemindeki krem/terracotta damali fayans. */
 :root {
-  --bg: #0b0e14;
-  --bg2: #0e1219;
-  --card: #131824;
-  --card2: #182031;
-  --line: #232b3d;
-  --line2: #2d3a52;
-  --txt: #e8ecf4;
-  --mut: #8b94a8;
-  --acc: #ffb020;
-  --acc-dim: #ffb02026;
-  --green: #34d399;
-  --green-dim: #34d39922;
-  --red: #f87171;
-  --red-dim: #f8717122;
-  --blue: #60a5fa;
-  --r: 14px;
-  --r-sm: 9px;
+  --bg: #f4eddd; /* badanali duvar */
+  --bg2: #ece2cd; /* golgeli siva */
+  --card: #fffcf4; /* tabela beyazi */
+  --card2: #f7f0e0; /* ikincil yuzey */
+  --line: #d9cbb0; /* soluk cizgi */
+  --line2: #c0ad8c; /* belirgin cizgi */
+  --txt: #1e1a16; /* tabela siyahi */
+  --mut: #6f6250; /* soluk kahve-gri (kontrast 5.1 - okunur) */
+  --acc: #e4611c; /* gunes turuncusu */
+  --acc-dim: #e4611c1f;
+  --acc-deep: #b8460f; /* koyu turuncu (hover) */
+  --green: #3e7a50; /* dusus = iyi haber */
+  --green-dim: #3e7a5018;
+  --red: #b23a2b; /* "KAHVALTI SALONU" kirmizisi */
+  --red-dim: #b23a2b16;
+  --blue: #6e9fb5; /* mavi plastik kasa */
+  --tile-a: #f2e5d6; /* fayans - acik kare */
+  --tile-b: #ce9179; /* fayans - terracotta kare */
+  --ink-shadow: #1e1a1626;
+  --r: 5px; /* vintage: yuvarlak degil, emaye tabela kosesi */
+  --r-sm: 3px;
   font-size: 15px;
 }
 
@@ -51,7 +58,7 @@ a:hover {
 
 ::selection {
   background: var(--acc);
-  color: #14100a;
+  color: #FFFCF4;
 }
 
 .mut {
@@ -110,18 +117,18 @@ a:hover {
 .brand-mark {
   width: 38px;
   height: 38px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, var(--acc), #ff8a3c);
-  color: #171207;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--acc), #F0873C);
+  color: #FFF9EE;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 18px #ffb02033;
+  box-shadow: 0 4px 18px #E4611C2e;
 }
 .brand-mark-lg {
   width: 54px;
   height: 54px;
-  border-radius: 15px;
+  border-radius: 5px;
 }
 .brand-text {
   font-weight: 800;
@@ -144,7 +151,7 @@ a:hover {
   gap: 4px;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 4px;
 }
 .tabs button {
@@ -155,7 +162,7 @@ a:hover {
   background: transparent;
   color: var(--mut);
   padding: 8px 14px;
-  border-radius: 9px;
+  border-radius: 3px;
   cursor: pointer;
   font-weight: 600;
   font-size: 0.9rem;
@@ -171,7 +178,7 @@ a:hover {
 }
 .badge {
   background: var(--acc);
-  color: #171207;
+  color: #FFF9EE;
   font-size: 0.68rem;
   font-weight: 800;
   border-radius: 99px;
@@ -192,7 +199,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border-radius: 11px;
+  border-radius: 4px;
   border: 1px solid var(--line);
   background: var(--card);
   color: var(--txt);
@@ -215,11 +222,11 @@ a:hover {
 .btn-primary {
   background: var(--acc);
   border-color: var(--acc);
-  color: #171207;
+  color: #FFF9EE;
 }
 .btn-primary:hover:not(:disabled) {
-  background: #ffc24a;
-  border-color: #ffc24a;
+  background: #C9500F;
+  border-color: #C9500F;
 }
 .btn-ghost {
   background: transparent;
@@ -227,7 +234,7 @@ a:hover {
 .btn-sm {
   padding: 6px 11px;
   font-size: 0.82rem;
-  border-radius: 9px;
+  border-radius: 3px;
 }
 .btn-block {
   width: 100%;
@@ -238,7 +245,7 @@ a:hover {
 .btn-dangerfill {
   background: var(--red);
   border-color: var(--red);
-  color: #1c0f0f;
+  color: #FFF9EE;
 }
 .icon-btn {
   border: 0;
@@ -246,7 +253,7 @@ a:hover {
   color: var(--mut);
   cursor: pointer;
   padding: 6px;
-  border-radius: 8px;
+  border-radius: 3px;
   display: inline-flex;
 }
 .icon-btn:hover {
@@ -314,7 +321,7 @@ a:hover {
   align-items: flex-start;
   gap: 3px;
   background: linear-gradient(160deg, var(--green-dim), var(--card));
-  border: 1px solid #34d39936;
+  border: 1px solid #3E7A5040;
   border-radius: var(--r);
   padding: 11px 14px;
   min-width: 210px;
@@ -404,7 +411,7 @@ a:hover {
   gap: 7px;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 4px;
   padding: 8px 12px;
   color: var(--mut);
 }
@@ -418,7 +425,7 @@ a:hover {
 select {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 4px;
   padding: 8px 10px;
   outline: 0;
   cursor: pointer;
@@ -435,11 +442,11 @@ input:focus {
   gap: 12px;
   flex-wrap: wrap;
   background: var(--acc-dim);
-  border: 1px solid #ffb02040;
+  border: 1px solid #E4611C44;
   border-radius: var(--r-sm);
   padding: 9px 14px;
   font-size: 0.84rem;
-  color: #ffd794;
+  color: #8C3E12;
   margin-bottom: 14px;
 }
 
@@ -462,7 +469,7 @@ input:focus {
   gap: 10px;
 }
 .card:hover {
-  border-color: #34405c;
+  border-color: #C4B49A;
   transform: translateY(-1px);
 }
 .card-paused {
@@ -475,7 +482,7 @@ input:focus {
 .card-img {
   width: 62px;
   height: 62px;
-  border-radius: 10px;
+  border-radius: 4px;
   background: var(--bg2);
   border: 1px solid var(--line);
   display: flex;
@@ -507,31 +514,31 @@ input:focus {
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 2.5px 7px;
   background: var(--card2);
   color: var(--mut);
   border: 1px solid var(--line);
 }
 .site-trendyol {
-  color: #ff9a62;
-  border-color: #ff7a3c44;
-  background: #ff7a3c14;
+  color: #B4471A;
+  border-color: #E4611C55;
+  background: #E4611C14;
 }
 .site-hepsiburada {
-  color: #ffa726;
-  border-color: #ff960044;
-  background: #ff960012;
+  color: #9A5A12;
+  border-color: #C98A2E55;
+  background: #C98A2E16;
 }
 .site-amazon {
-  color: #ffd57e;
-  border-color: #ffb84d44;
-  background: #ffb84d10;
+  color: #7E5A16;
+  border-color: #B8912E55;
+  background: #B8912E16;
 }
 .site-n11 {
-  color: #ce93d8;
-  border-color: #ba68c844;
-  background: #ba68c812;
+  color: #7B4B86;
+  border-color: #7B4B8655;
+  background: #7B4B8616;
 }
 .cat-tag {
   --chip: var(--acc);
@@ -542,12 +549,12 @@ input:focus {
   font-weight: 600;
   color: var(--mut);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 2.5px 7px;
 }
 .mini-badge {
   font-size: 0.68rem;
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 2.5px 7px;
   background: var(--card2);
   color: var(--mut);
@@ -555,7 +562,7 @@ input:focus {
 }
 .mini-badge-err {
   color: var(--red);
-  border-color: #f8717144;
+  border-color: #B23A2B4d;
   background: var(--red-dim);
 }
 .card-title {
@@ -594,7 +601,7 @@ input:focus {
 .chg {
   font-weight: 800;
   font-size: 0.85rem;
-  border-radius: 8px;
+  border-radius: 3px;
   padding: 3px 8px;
   font-variant-numeric: tabular-nums;
   flex: 0 0 auto;
@@ -657,7 +664,7 @@ input:focus {
   color: var(--mut);
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: 3px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -697,7 +704,7 @@ input:focus {
 .modal-back {
   position: fixed;
   inset: 0;
-  background: #05070bc9;
+  background: #2A231Bb0;
   backdrop-filter: blur(3px);
   display: flex;
   align-items: flex-start;
@@ -710,11 +717,11 @@ input:focus {
   position: relative;
   background: var(--bg2);
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: 3px;
   padding: 26px;
   width: 100%;
   max-width: 560px;
-  box-shadow: 0 30px 80px #00000088;
+  box-shadow: 0 30px 80px #1E1A1638;
 }
 .modal-wide {
   max-width: 860px;
@@ -728,7 +735,7 @@ input:focus {
   color: var(--mut);
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: 4px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -759,7 +766,7 @@ input:focus {
 input:not([type='color']):not([type='checkbox']) {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 11px;
+  border-radius: 4px;
   padding: 10px 13px;
   outline: 0;
   width: 100%;
@@ -769,8 +776,8 @@ input:not([type='color']):not([type='checkbox']) {
 .form-err {
   margin-top: 12px;
   background: var(--red-dim);
-  border: 1px solid #f8717140;
-  color: #fda4a4;
+  border: 1px solid #B23A2B45;
+  color: #8E2C20;
   border-radius: var(--r-sm);
   padding: 10px 14px;
   font-size: 0.86rem;
@@ -799,7 +806,7 @@ input:not([type='color']):not([type='checkbox']) {
   width: 84px;
   height: 84px;
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: 4px;
   background: #fff;
   flex: 0 0 auto;
 }
@@ -871,7 +878,7 @@ input:not([type='color']):not([type='checkbox']) {
   width: 100%;
   height: 84px;
   object-fit: contain;
-  border-radius: 7px;
+  border-radius: 3px;
   background: #fff;
 }
 .listing-noimg {
@@ -908,7 +915,7 @@ input:not([type='color']):not([type='checkbox']) {
   width: 92px;
   height: 92px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: 4px;
   background: #fff;
   flex: 0 0 auto;
 }
@@ -984,7 +991,7 @@ input:not([type='color']):not([type='checkbox']) {
   gap: 4px;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 3px;
   padding: 3px;
 }
 .range-btns button {
@@ -992,7 +999,7 @@ input:not([type='color']):not([type='checkbox']) {
   background: transparent;
   color: var(--mut);
   padding: 4px 10px;
-  border-radius: 7px;
+  border-radius: 3px;
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 700;
@@ -1034,16 +1041,16 @@ input:not([type='color']):not([type='checkbox']) {
   opacity: 0.8;
 }
 .chart-cross {
-  stroke: #ffffff2e;
+  stroke: #1E1A1620;
   stroke-width: 1;
 }
 .chart-tip {
   position: absolute;
   top: 8px;
   transform: translateX(-50%);
-  background: #05070bf0;
+  background: #2A231Bf2;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 3px;
   padding: 6px 11px;
   display: flex;
   flex-direction: column;
@@ -1141,11 +1148,11 @@ input:not([type='color']):not([type='checkbox']) {
   cursor: pointer;
 }
 .notif.clickable:hover {
-  border-color: #34405c;
+  border-color: #C4B49A;
 }
 .notif.unread {
   border-left: 3px solid var(--acc);
-  background: linear-gradient(90deg, #ffb02009, var(--card) 40%);
+  background: linear-gradient(90deg, #E4611C12, var(--card) 40%);
 }
 .nkind {
   width: 11px;
@@ -1157,11 +1164,11 @@ input:not([type='color']):not([type='checkbox']) {
 .nkind-drop,
 .nkind-target {
   background: var(--green);
-  box-shadow: 0 0 10px #34d39966;
+  box-shadow: 0 0 10px #3E7A5055;
 }
 .nkind-target {
   background: var(--acc);
-  box-shadow: 0 0 10px #ffb02066;
+  box-shadow: 0 0 10px #E4611C55;
 }
 .nkind-rise {
   background: var(--red);
@@ -1170,11 +1177,11 @@ input:not([type='color']):not([type='checkbox']) {
   background: var(--blue);
 }
 .nkind-new_product {
-  background: #c084fc;
+  background: #8A5BA6;
 }
 .nkind-error {
   background: var(--red);
-  box-shadow: 0 0 10px #f8717166;
+  box-shadow: 0 0 10px #B23A2B55;
 }
 .notif-body {
   display: flex;
@@ -1250,7 +1257,7 @@ input:not([type='color']):not([type='checkbox']) {
 }
 .pill-ok {
   color: var(--green);
-  border-color: #34d39944;
+  border-color: #3E7A504d;
   background: var(--green-dim);
 }
 .set-steps {
@@ -1309,7 +1316,7 @@ input:not([type='color']):not([type='checkbox']) {
   width: 30px;
   height: 30px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 3px;
   background: transparent;
   cursor: pointer;
   padding: 2px;
@@ -1365,13 +1372,13 @@ input:not([type='color']):not([type='checkbox']) {
   justify-content: center;
   padding: 20px;
   background:
-    radial-gradient(700px 400px at 70% -10%, #ffb02011, transparent),
-    radial-gradient(500px 400px at 10% 110%, #60a5fa0d, transparent), var(--bg);
+    radial-gradient(700px 400px at 70% -10%, #E4611C16, transparent),
+    radial-gradient(500px 400px at 10% 110%, #6E9FB516, transparent), var(--bg);
 }
 .login-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 3px;
   padding: 36px 32px;
   width: 100%;
   max-width: 360px;
@@ -1429,22 +1436,22 @@ input:not([type='color']):not([type='checkbox']) {
   display: flex;
   align-items: center;
   gap: 9px;
-  background: #0c1019f2;
+  background: #2A231Bf5;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 11px 18px;
   font-size: 0.88rem;
   font-weight: 600;
-  box-shadow: 0 12px 40px #00000066;
+  box-shadow: 0 12px 40px #1E1A1633;
   animation: toastIn 0.22s ease-out;
   max-width: min(480px, 90vw);
 }
 .toast-ok {
-  border-color: #34d39955;
+  border-color: #3E7A5066;
   color: var(--green);
 }
 .toast-err {
-  border-color: #f8717155;
+  border-color: #B23A2B66;
   color: var(--red);
 }
 @keyframes toastIn {
@@ -1457,7 +1464,7 @@ input:not([type='color']):not([type='checkbox']) {
 /* ---------- spinner ---------- */
 .spinner {
   display: inline-block;
-  border: 2px solid #ffffff26;
+  border: 2px solid #1E1A1626;
   border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -1482,7 +1489,7 @@ input:not([type='color']):not([type='checkbox']) {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--line2, #34405c);
+  background: var(--line2, #C4B49A);
 }
 
 /* ---------- responsive ---------- */
@@ -1512,15 +1519,261 @@ input:not([type='color']):not([type='checkbox']) {
   }
 }
 
-/* ---------- kurulum / guvenlik uyarisi ---------- */
+/* ═══════════════════════════════════════════════════════════════
+   VINTAGE KATMAN — mahalle esnaf tabelasi dili
+   Referans: 'YENİ GÜN Kahvaltı Salonu' tabelasi + damali fayans
+   ═══════════════════════════════════════════════════════════════ */
+
+/* --- badanali duvar dokusu: hafif leke ve sivama izleri --- */
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(620px 380px at 12% -5%, #fffdf6 0%, transparent 70%),
+    radial-gradient(520px 340px at 92% 8%, #fbf6ea 0%, transparent 72%),
+    radial-gradient(420px 300px at 50% 105%, #e7dcc5 0%, transparent 70%);
+  background-attachment: fixed;
+}
+
+/* --- damali fayans: gecis ogesi (baslik alti, kart ustu, altbilgi) --- */
+.tile-strip,
+.hdr::after,
+.tile-edge::before {
+  /* iki sira kare = gercek dama; tek sira olursa kesik cizgi gibi okunuyor */
+  background-image: repeating-conic-gradient(var(--tile-b) 0% 25%, var(--tile-a) 0% 50%);
+  background-size: 16px 16px;
+}
+.tile-strip {
+  height: 16px;
+  width: 100%;
+  border-top: 1px solid #00000014;
+  border-bottom: 1px solid #00000014;
+}
+.hdr {
+  border-bottom: 0;
+  position: relative;
+}
+.hdr::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 16px;
+  opacity: 0.9;
+}
+.tile-edge {
+  position: relative;
+  overflow: hidden;
+}
+.tile-edge::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 7px;
+}
+
+/* --- TABELA LOGOSU: emaye levha, siyah cerceve, turuncu gunes --- */
+.brand-sign {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: var(--card);
+  border: 2.5px solid var(--txt);
+  border-radius: 2px;
+  padding: 5px 13px 4px;
+  box-shadow: 2px 2px 0 var(--ink-shadow);
+  line-height: 1;
+}
+.brand-word {
+  font-weight: 900;
+  font-size: 1.3rem;
+  letter-spacing: 0.06em;
+  color: var(--txt);
+  font-family: 'Haettenschweiler', 'Arial Narrow', 'Oswald', Impact, ui-sans-serif, sans-serif;
+  position: relative;
+  white-space: nowrap;
+  isolation: isolate;
+}
+/* tabeladaki 'İ' harfinin ardindaki turuncu gunes dairesi.
+   Daire harften biraz genis ama komsu harfleri ezmesin diye
+   harfin iki yanina nefes payi birakilir. */
+.brand-sun {
+  position: relative;
+  display: inline-block;
+  margin: 0 0.24em;
+  color: var(--txt);
+}
+.brand-sun::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1.15em;
+  height: 1.15em;
+  transform: translate(-50%, -50%);
+  background: var(--acc);
+  border-radius: 50%;
+  z-index: -1;
+}
+.brand-sub {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  color: var(--red);
+  text-transform: uppercase;
+  padding-left: 0.26em;
+}
+.brand-sign-lg {
+  padding: 9px 22px 7px;
+  border-width: 3px;
+  box-shadow: 3px 3px 0 var(--ink-shadow);
+}
+.brand-sign-lg .brand-word {
+  font-size: 2.1rem;
+}
+.brand-sign-lg .brand-sub {
+  font-size: 0.7rem;
+}
+.brand:hover .brand-sign {
+  box-shadow: 3px 3px 0 #1e1a1633;
+  transform: translate(-1px, -1px);
+}
+.brand-sign {
+  transition: 0.14s;
+}
+
+/* --- kartlar: emaye levha gibi, yumusak golge yerine sert ofset --- */
+.card,
+.panel,
+.modal,
+.login-card,
+.notif,
+.stat {
+  box-shadow: 2px 2px 0 var(--ink-shadow);
+}
+.modal,
+.login-card {
+  box-shadow: 4px 4px 0 #1e1a1633;
+  border: 2px solid var(--txt);
+}
+
+/* --- birincil buton: turuncu emaye, siyah cerceveli --- */
+.btn-primary {
+  border-color: var(--txt);
+  border-width: 1.5px;
+  box-shadow: 2px 2px 0 var(--ink-shadow);
+  letter-spacing: 0.02em;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--acc-deep);
+  border-color: var(--txt);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #1e1a1633;
+}
+.btn-primary:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 var(--ink-shadow);
+}
+
+/* --- sekmeler: tabela serisi --- */
+.tabs {
+  box-shadow: 2px 2px 0 var(--ink-shadow);
+}
+.tabs button.on {
+  background: var(--acc);
+  color: var(--txt);
+  font-weight: 700;
+}
+.tabs button.on svg {
+  color: var(--txt);
+}
+
+/* Turuncu zemin uzerine SIYAH yazi: hem tabelanin kendi dili
+   (turuncu dairenin ustundeki siyah harf), hem de kontrast 4.96
+   -- krem yazi 3.33'te kaliyordu, okunmuyordu. */
+.btn-primary,
+.badge {
+  color: var(--txt);
+}
+.btn-primary:hover:not(:disabled) {
+  color: #fff9ee;
+}
+::selection {
+  background: var(--acc);
+  color: var(--txt);
+}
+
+/* --- fiyat rakamlari: kasa fisi hissi, tabular --- */
+.price,
+.card-price,
+.det-price,
+.stat-val {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* --- baglanti ve secim --- */
+a {
+  color: var(--acc-deep);
+}
+::selection {
+  background: var(--acc);
+  color: #fffcf4;
+}
+
+/* --- form alanlari: kagit uzerine cizgi --- */
+input,
+select,
+textarea {
+  background: var(--card) !important;
+  border-color: var(--line2) !important;
+}
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--acc);
+  outline-offset: 1px;
+  border-color: transparent !important;
+}
+
+/* --- toast: koyu ahsap zemin uzerine krem yazi --- */
+.toast {
+  color: #f6efdf;
+  border-color: #00000033;
+  border-radius: 3px;
+}
+
+/* --- grafik: soluk mürekkep cizgileri --- */
+.chart-grid {
+  stroke: #1e1a1618;
+}
+.chart-tip {
+  color: #f6efdf;
+}
+
+/* --- altbilgi fayans seridi mobilde de tam en --- */
+@media (max-width: 640px) {
+  .brand-sign-lg .brand-word {
+    font-size: 1.7rem;
+  }
+  /* seridi alcaltma: 16px = iki sira kare, dusurulurse dama okunmuyor */
+  .hdr::after,
+  .tile-strip {
+    height: 14px;
+    background-size: 14px 14px;
+  }
+}
+
+/* --- kurulum / guvenlik uyarisi --- */
 .setup-card {
   max-width: 460px;
 }
 .setup-warn {
   background: var(--red-dim);
-  border: 1px solid var(--red);
+  border: 1.5px solid var(--red);
   border-left-width: 4px;
-  border-radius: var(--r-sm);
+  border-radius: 3px;
   padding: 11px 13px;
   font-size: 0.88rem;
   line-height: 1.5;
@@ -1530,12 +1783,13 @@ input:not([type='color']):not([type='checkbox']) {
 .setup-cmd {
   display: block;
   background: var(--bg2);
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
   padding: 9px 11px;
   font-size: 0.85rem;
   user-select: all;
 }
+
 .set-row-wrap {
   flex-wrap: wrap;
   gap: 8px;
@@ -1543,5 +1797,5 @@ input:not([type='color']):not([type='checkbox']) {
 }
 .btn-ghost.danger {
   color: var(--red);
-  border-color: #f8717145;
+  border-color: #B23A2B45;
 }

@@ -117,6 +117,18 @@ export const IconEye = (p: IconProps) => (
   </I>
 );
 
+// ---- marka: mahalle esnaf tabelasi (emaye levha + turuncu gunes) ----
+export function BrandSign({ lg }: { lg?: boolean }) {
+  return (
+    <span className={`brand-sign${lg ? ' brand-sign-lg' : ''}`}>
+      <span className="brand-word">
+        GAFF<span className="brand-sun">U</span>R
+      </span>
+      <span className="brand-sub">fiyat takip</span>
+    </span>
+  );
+}
+
 export function Spinner({ size = 16 }: { size?: number }) {
   return <span className="spinner" style={{ width: size, height: size }} aria-label="yükleniyor" />;
 }
