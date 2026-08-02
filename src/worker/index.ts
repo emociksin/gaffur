@@ -3,7 +3,9 @@ import api from './api';
 import { runScheduled } from './cron';
 import type { Env } from './env';
 
-const app = new Hono<{ Bindings: Env }>();
+// `app` disari aciliyor: Node/Docker girisi (src/server/index.ts) ayni uygulamayi
+// kendi baglamalariyla (SQLite + statik dosya) calistiriyor.
+export const app = new Hono<{ Bindings: Env }>();
 
 // ---- guvenlik basliklari (her yanitta) ----
 // CSP: tum JS/CSS kendi origin'imizden; urun gorselleri disaridan geldigi icin

@@ -42,3 +42,5 @@ build/
 # Lokal not dosyalari
 notes-local.md
 *.draft.md
+
+data/

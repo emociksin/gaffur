@@ -8,12 +8,15 @@
     "build": "vite build",
     "check": "tsc -p tsconfig.worker.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "start": "npm run build && wrangler dev --port 8787",
+    "build:node": "npm run build && esbuild src/server/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/server/index.mjs --packages=external",
+    "start:node": "node dist/server/index.mjs",
     "deploy": "npm run build && wrangler deploy",
     "db:local": "wrangler d1 migrations apply gaffur-db --local",
     "db:remote": "wrangler d1 migrations apply gaffur-db --remote",
     "probe": "tsx scripts/probe.ts"
   },
   "dependencies": {
+    "@hono/node-server": "^1.13.0",
     "hono": "^4.6.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
