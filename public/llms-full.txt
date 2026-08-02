@@ -1,24 +1,26 @@
 # gaffur
 
-> gaffur.net — yeni dönem için hazırlanıyor.
-
-Domain 2026-05-02 itibariyle yeniden aktif. Şu an placeholder durumda.
+> Gaffur — kişisel fiyat takip uygulaması (gaffur.net).
 
 ## Hakkında
 
-gaffur.net 2013-2014 döneminde aktif olarak kullanılmış, sonra 12 yıl boşta
-kalmış ve 2026 Mayıs ayında tekrar kayıt altına alınmıştır. Şu an içerik
-konsepti netleşene kadar tek sayfalık placeholder olarak yayınlanmaktadır.
+gaffur.net üzerinde çalışan Gaffur, takibe alınan ürünlerin fiyatlarını düzenli
+aralıklarla kontrol eden, fiyat düşüşlerinde ve hedef fiyata inişlerde Telegram
+bildirimi gönderen, fiyat geçmişini grafiklerle sunan kişisel bir web
+uygulamasıdır. Cloudflare Workers üzerinde çalışır.
 
-## Konsept
+Uygulama parola korumalıdır; herkese açık içerik bulunmaz.
 
-İçerik konsepti henüz finalize edilmedi. Olası yönler değerlendiriliyor:
-- Türkçe SEO/GEO/AI yazılım geliştirme uzmanlık platformu
-- Mikro web araçları ailesi
-- AI-native vertical agent ürünü
-- Anadolu zanaat kürasyon ve hikâye platformu
+## Özellikler
 
-Konsept netleştiğinde bu dosya tam içerik haritasıyla güncellenecektir.
+- Ürün bağlantısı yapıştırarak takip: Trendyol, Hepsiburada, Amazon, N11 ve
+  genel e-ticaret siteleri
+- Trendyol kategori/arama sayfası takibi: listedeki ürünler toplu takip edilir,
+  listeye giren yeni ürünler otomatik keşfedilir
+- Fiyat geçmişi grafiği, en düşük / en yüksek / ortalama fiyat istatistikleri
+- Hedef fiyat, yüzde eşiği ve stok değişimi alarmları
+- Telegram bot bildirimleri
+- CSV dışa aktarım
 
 ## İletişim
 - E-posta: emociksin@gmail.com

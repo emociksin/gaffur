@@ -1,59 +1,110 @@
-# gaffur.net
+# Gaffur — gaffur.net
 
-12 yıl sonra geri kazanılmış domain için **hafif başlangıç** projesi (concept-agnostic).
+Fiyatları senin yerine kollar. Trendyol, Hepsiburada, Amazon, N11 ve diğer sitelerdeki
+ürünleri takibe alırsın; Gaffur fiyatları düzenli kontrol eder, düşünce Telegram'dan
+haber verir, geçmişi grafikle gösterir.
 
-## Amaç
+**Altyapı:** Cloudflare Workers + D1 + Cron Trigger — sunucu yok, ücretsiz katman yeterli.
 
-Domain 2026-05-02'de yeniden kayıt edildi. İçerik konsepti henüz netleşmedi. Bu repo:
+## Özellikler
 
-- Domaini "claim" eder (placeholder holding page)
-- Teknik SEO + GEO temelini kurar (robots.txt, sitemap.xml, llms.txt, schema)
-- Indekslenme tetikleyicilerini hazırlar
-- Konsept geldiğinde hızla genişleyebilecek bir iskelet sağlar
+- **Ürün takibi:** Bağlantı yapıştır → önizleme → takibe al. Site adaptörleri
+  (Trendyol/Hepsiburada/Amazon/N11) + genel parser (JSON-LD/meta — çoğu e-ticaret
+  sitesi bu sayede desteklenir).
+- **Kategori takibi:** Trendyol kategori/arama bağlantısı yapıştır → listedeki ürünler
+  toplu takibe girer, listeye eklenen yeni ürünler otomatik keşfedilir (6 saatte bir).
+- **Bildirimler:** Fiyat düşüşü, hedef fiyata iniş, stok değişimi, yeni ürün — uygulama
+  içi + Telegram. Ürün başına mod ve % eşiği seçilebilir.
+- **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
+- **Kontrol sıklığı:** Ürün başına 15 dk – 24 saat; "Şimdi Kontrol Et" ile anlık tarama.
+- **Firecrawl fallback:** Bot koruması olan siteler için ayarlardan Firecrawl API anahtarı
+  eklenir; önce her zaman ücretsiz doğrudan erişim denenir.
+- **Güvenlik:** Tek parola (Cloudflare secret), HMAC imzalı oturum çerezi.
 
-## Yapı
-
-```
-gaffur/
-├── README.md                    Bu dosya
-├── baseline-2026-05-02.md       Discovery findings (DNS, RDAP, metrikler)
-├── deployment-guide.md          Manuel kurulum adımları (CF, Search Console, vb.)
-├── .gitignore
-└── public/                      Deploy edilecek statik dosyalar
-    ├── index.html               Holding page (logo + "Yeniden.")
-    ├── robots.txt               AI bot'ları dahil tüm crawler'lara açık
-    ├── sitemap.xml              Tek URL (anasayfa)
-    ├── llms.txt                 LLM crawl rehberi (minimal)
-    ├── llms-full.txt            Genişletilmiş LLM içerik
-    ├── favicon.svg              SVG favicon (modern browser)
-    ├── og.svg                   Open Graph image (1200x630)
-    └── .well-known/
-        └── security.txt         Güvenlik iletişim bilgisi
-```
-
-## Lokal Test
+## Lokal Çalıştırma
 
 ```bash
-cd public
-python -m http.server 8000
-# veya
-npx serve public
-# tarayıcıda: http://localhost:8000
+npm install
+npm run db:local     # yerel D1 şemasını kur (ilk sefer)
+npm start            # build + wrangler dev → http://localhost:8787
 ```
 
-## Deploy
+Yerelde parola istemez: proje kökündeki `.dev.vars` dosyasında `ALLOW_OPEN=1` yazdığı için
+açık modda çalışır. Bu dosya git'e girmez ve **deploy edilmez**.
 
-**Önerilen: Cloudflare Pages** (free, hızlı, CF DNS zaten ayarlı).
+## gaffur.net'e Deploy
 
-Detaylı manuel kurulum: bkz. `deployment-guide.md`.
+```bash
+npx wrangler login
+npx wrangler d1 create gaffur-db
+```
 
-## Sonraki Adım
+Çıktıdaki `database_id`'yi `wrangler.jsonc` içine yaz, sonra:
 
-1. Deploy + DNS A/CNAME bağla → site live
-2. Search Console + Bing Webmaster verify + sitemap submit
-3. Lighthouse + securityheaders skor doğrulama
-4. Konsept kararı → içerik üretimi başlat
+```bash
+npm run db:remote
+npx wrangler secret put PASSWORD
+npm run deploy
+```
+
+> **PASSWORD secret'i zorunludur.** Uygulama fail-closed çalışır: secret tanımlı değilse
+> tüm API `503` döner ve arayüz "Kurulum tamamlanmadı" ekranını gösterir — yani secret'ı
+> unutarak deploy edersen panel herkese açık kalmaz, kilitli kalır. Açık mod yalnızca
+> `.dev.vars` içinde `ALLOW_OPEN=1` varken (yani sadece yerelde) mümkündür; bu değişkeni
+> canlıya asla koyma.
+
+Son adım: Cloudflare dash → Workers & Pages → **gaffur** → Settings → Domains & Routes →
+**Add custom domain** → `gaffur.net` (DNS zaten Cloudflare'de olduğundan otomatik bağlanır;
+istersen `www.gaffur.net` de ekle).
+
+Deploy sonrası uygulamanın **Ayarlar** sayfasından:
+
+1. **Telegram:** BotFather'dan bot aç → token'ı yapıştır → botuna `/start` yaz →
+   "Sohbeti Bul" → "Kaydet ve Test Et".
+2. **Firecrawl (önerilir):** [firecrawl.dev](https://www.firecrawl.dev)'den anahtar al,
+   yapıştır — Trendyol/Hepsiburada gibi bot korumalı siteler bununla çekilir.
+
+## Nasıl Çalışır
+
+Cron her 15 dakikada tetiklenir; kontrol sırası gelen ürünler (ürün başına ayarlanan
+sıklığa göre) taranır. Fiyat çekme sırası: **doğrudan erişim** (site adaptörü → JSON-LD →
+meta → gömülü JSON) → başarısızsa **Firecrawl**. Değişimler `price_history`'ye yazılır,
+alarm kurallarına uyanlar bildirim üretir.
+
+Ücretsiz Workers planında çalıştırma başına 50 alt-istek sınırı vardır; bu yüzden
+kontroller 10'arlı partiler halinde yapılır (15 dk'lık tur başına ~10 ürün → saatte ~40
+kontrol kapasitesi; onlarca ürün için fazlasıyla yeterli).
+
+## Güvenlik
+
+| Önlem | Nerede |
+|---|---|
+| **Fail-closed kimlik doğrulama** — `PASSWORD` yoksa tüm API 503, giriş de dahil | `worker/api.ts` |
+| Giriş hız sınırı — IP başına 10 deneme/15 dk + toplam 60/15 dk, `429` + `Retry-After` | `worker/api.ts` (D1 `login_attempts`) |
+| Oturum imzası paroladan bağımsız rastgele anahtarla (çerez artık parola için kırma oracle'ı değil) | `worker/auth.ts` (`session_secret`) |
+| Oturum iptali — "Tüm cihazlarda çıkış" imza anahtarını döndürür | Ayarlar → Güvenlik |
+| CSRF — `SameSite=Strict` çerez + veri değiştiren isteklerde Origin doğrulaması | `worker/api.ts` |
+| Çerez — `HttpOnly`, https'te `Secure` + `__Host-` öneki, 7 gün | `worker/api.ts` |
+| Gizli anahtarlar (Telegram, Firecrawl) istemciye maskeli gider, geri yazılmaz | `worker/api.ts` |
+| Güvenlik başlıkları — CSP, `frame-ancestors 'none'`, nosniff, Referrer-Policy, HSTS | `public/_headers` + `worker/index.ts` |
+| CSV formül enjeksiyonu koruması (`=`, `+`, `-`, `@` ile başlayan hücreler) | `worker/api.ts` |
+| Telegram mesajlarında bağlantı kaçışı (yalnız http/https, öznitelik kaçışlı) | `worker/telegram.ts` |
+| SQL — tüm sorgular `.bind()` parametreli; XSS — React kaçışı, `dangerouslySetInnerHTML` yok | genel |
+
+Sabit `PASSWORD`'ü değiştirmek oturumları düşürmez (imza ayrı anahtarla); tüm oturumları
+kapatmak için Ayarlar'daki **Tüm cihazlarda çıkış** düğmesini kullan.
+
+## Geliştirme
+
+```bash
+npm run check                     # typecheck (worker + web)
+npx tsx scripts/test-parse.ts     # fiyat parser birim testleri
+npx tsx scripts/probe.ts <url>    # bir URL'yi canlı çözümle
+node scripts/probe-workerd.mjs    # wrangler dev açıkken gerçek site testi
+```
+
+Mimari ayrıntıları ve saha notları: [CLAUDE.md](CLAUDE.md).
 
 ## Lisans
 
-Bu repo şahsi proje. İçerik © 2026 gaffur.net.
+Şahsi proje. © 2026 gaffur.net
