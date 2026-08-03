@@ -3,7 +3,7 @@ import { useState } from 'react';
 import type { Category, DiscoveredItem, ScrapeResult } from '../../shared/types';
 import { api, ApiError } from '../api';
 import { money } from '../format';
-import { IconCheck, IconSearch, Modal, SiteBadge, Spinner, useToast } from '../ui';
+import { IconCheck, IconSearch, Modal, SiteBadge, Spinner, useIsAdmin, useToast } from '../ui';
 
 const INTERVALS: [number, string][] = [
   [15, '15 dakikada bir'],
@@ -24,6 +24,7 @@ export function AddModal({
   onDone: () => void;
 }) {
   const toast = useToast();
+  const isAdmin = useIsAdmin();
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -166,22 +167,28 @@ export function AddModal({
             </div>
           </div>
 
+          {/* Ziyaretci yalnizca hedef fiyat verir; kategori, bildirim kanali ve
+              kontrol sikligi site sahibinin isi (bildirimler onun Telegram'ina gider). */}
           <div className="form-grid">
-            <label>
-              Kategori
-              <select value={catId} onChange={(e) => setCatId(e.target.value)} disabled={!!newCat.trim()}>
-                <option value="">Kategorisiz</option>
-                {cats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              veya yeni kategori
-              <input placeholder="örn. Elektronik" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
-            </label>
+            {isAdmin && (
+              <>
+                <label>
+                  Kategori
+                  <select value={catId} onChange={(e) => setCatId(e.target.value)} disabled={!!newCat.trim()}>
+                    <option value="">Kategorisiz</option>
+                    {cats.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  veya yeni kategori
+                  <input placeholder="örn. Elektronik" value={newCat} onChange={(e) => setNewCat(e.target.value)} />
+                </label>
+              </>
+            )}
             <label>
               Hedef fiyat (opsiyonel)
               <input
@@ -191,25 +198,29 @@ export function AddModal({
                 inputMode="decimal"
               />
             </label>
-            <label>
-              Bildirim
-              <select value={alertMode} onChange={(e) => setAlertMode(e.target.value)}>
-                <option value="drop">Fiyat düşünce</option>
-                <option value="target">Hedef fiyata inince</option>
-                <option value="any">Her değişimde</option>
-                <option value="off">Bildirim yok</option>
-              </select>
-            </label>
-            <label>
-              Kontrol sıklığı
-              <select value={interval} onChange={(e) => setIntervalMin(Number(e.target.value))}>
-                {INTERVALS.map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isAdmin && (
+              <>
+                <label>
+                  Bildirim
+                  <select value={alertMode} onChange={(e) => setAlertMode(e.target.value)}>
+                    <option value="drop">Fiyat düşünce</option>
+                    <option value="target">Hedef fiyata inince</option>
+                    <option value="any">Her değişimde</option>
+                    <option value="off">Bildirim yok</option>
+                  </select>
+                </label>
+                <label>
+                  Kontrol sıklığı
+                  <select value={interval} onChange={(e) => setIntervalMin(Number(e.target.value))}>
+                    {INTERVALS.map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </>
+            )}
           </div>
 
           <button className="btn btn-primary btn-block" onClick={() => saveProduct(false)} disabled={saving}>
@@ -219,7 +230,16 @@ export function AddModal({
         </div>
       )}
 
-      {listing && (
+      {listing && !isAdmin && (
+        <div className="preview">
+          <p className="mut">
+            Bu bir liste bağlantısı. Şu an tek tek ürün bağlantısı ekleyebilirsin — listedeki
+            bir ürünün sayfasını açıp onun bağlantısını yapıştır.
+          </p>
+        </div>
+      )}
+
+      {listing && isAdmin && (
         <div className="preview">
           <div className="listing-head">
             <b>{listing.length} ürün bulundu</b>

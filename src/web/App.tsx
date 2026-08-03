@@ -29,7 +29,9 @@ export default function App() {
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
+  // Yonetim gizli bir adreste: /yonetim. Ana sayfada giris duğmesi YOK —
+  // ziyaretcinin isine yaramaz, sadece "burada bir panel var" diye bagirir.
+  const [showLogin, setShowLogin] = useState(() => window.location.pathname === '/yonetim');
   const [detailId, setDetailId] = useState<number | null>(null);
   const [checkingAll, setCheckingAll] = useState<{ done: number } | null>(null);
   const checkingRef = useRef(false);
@@ -94,19 +96,27 @@ export default function App() {
     );
   }
 
-  // Ziyaretci giris yapmadan siteyi gezebilir: urunler, fiyatlar, grafikler
-  // herkese acik. Yonetim (ekleme/silme/ayarlar) parola ister.
+  // Ziyaretci siteyi gezebilir VE urun ekleyebilir. Yonetim (silme, ayarlar,
+  // bildirimler, toplu kontrol) parola ister.
   const isAdmin = auth.authed || auth.open;
+
+  const leaveAdminUrl = () => {
+    if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
+  };
 
   if (showLogin && !isAdmin) {
     return (
       <Login
         onSuccess={() => {
           setShowLogin(false);
+          leaveAdminUrl();
           setAuth((a) => ({ ...a, authed: true }));
           refresh();
         }}
-        onCancel={() => setShowLogin(false)}
+        onCancel={() => {
+          setShowLogin(false);
+          leaveAdminUrl();
+        }}
         configured={auth.configured}
       />
     );
@@ -138,25 +148,20 @@ export default function App() {
             </button>
           </nav>
         ) : (
-          <p className="hdr-tagline">Takip edilen ürünlerin güncel ve en düşük fiyatları</p>
+          <p className="hdr-tagline">Ürün bağlantısını yapıştır, fiyatını senin yerine takip edelim</p>
         )}
         <div className="hdr-actions">
-          {isAdmin ? (
-            <>
-              <button className="btn btn-ghost" onClick={checkAll} disabled={!!checkingAll} title="Tüm ürünleri şimdi kontrol et">
-                {checkingAll ? <Spinner size={15} /> : <IconRefresh size={16} />}
-                <span className="hide-sm">{checkingAll ? `Kontrol ediliyor… ${checkingAll.done}` : 'Şimdi Kontrol Et'}</span>
-              </button>
-              <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-                <IconPlus size={16} />
-                <span className="hide-sm">Ürün Ekle</span>
-              </button>
-            </>
-          ) : (
-            <button className="btn btn-ghost" onClick={() => setShowLogin(true)}>
-              Yönetim girişi
+          {isAdmin && (
+            <button className="btn btn-ghost" onClick={checkAll} disabled={!!checkingAll} title="Tüm ürünleri şimdi kontrol et">
+              {checkingAll ? <Spinner size={15} /> : <IconRefresh size={16} />}
+              <span className="hide-sm">{checkingAll ? `Kontrol ediliyor… ${checkingAll.done}` : 'Şimdi Kontrol Et'}</span>
             </button>
           )}
+          {/* Urun ekleme herkese acik: gelen ziyaretci kendi urununu takibe alabilir */}
+          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+            <IconPlus size={16} />
+            <span className="hide-sm">Ürün Ekle</span>
+          </button>
         </div>
       </header>
 

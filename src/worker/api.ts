@@ -86,6 +86,47 @@ const PUBLIC_READS: RegExp[] = [
 const isPublicRead = (method: string, path: string) =>
   method === 'GET' && PUBLIC_READS.some((r) => r.test(path));
 
+/**
+ * ZIYARETCININ YAPABILDIGI YAZMA ISLEMLERI.
+ * Site herkesin kullandigi bir arac: gelen kisi urun linkini yapistirip takibe
+ * alabilir. Ikisi de disariya istek attigi (ve Firecrawl kredisi harcayabildigi)
+ * icin IP basina ve toplamda hiz siniriyla korunur.
+ * Silme, duzenleme, ayarlar ve bildirimler ziyaretciye KAPALI kalir.
+ */
+const isPublicWrite = (method: string, path: string) =>
+  method === 'POST' && (path === '/api/products' || path === '/api/preview');
+
+// ---- ziyaretci hiz siniri ----
+const ADD_PER_IP = 10; // saatte, IP basina eklenebilecek urun
+const ADD_PER_HOUR_ALL = 60; // saatte, tum site
+const PREVIEW_PER_IP = 30; // saatte, IP basina onizleme
+const MAX_ACTIVE_PRODUCTS = 300; // cron maliyetini sinirlar
+
+/** Sinir asildiysa kac saniye beklenecegini, asilmadiysa 0 doner. */
+async function limitHit(env: Env, key: string, max: number, windowS: number): Promise<number> {
+  const t = now();
+  const row = await env.DB.prepare('SELECT n, reset_at FROM rate_limits WHERE k = ?')
+    .bind(key)
+    .first<{ n: number; reset_at: number }>();
+  if (!row || row.reset_at <= t) {
+    await env.DB.prepare(
+      `INSERT INTO rate_limits (k, n, reset_at) VALUES (?, 1, ?)
+       ON CONFLICT(k) DO UPDATE SET n = 1, reset_at = excluded.reset_at`
+    )
+      .bind(key, t + windowS)
+      .run();
+    return 0;
+  }
+  if (row.n >= max) return row.reset_at - t;
+  await env.DB.prepare('UPDATE rate_limits SET n = n + 1 WHERE k = ?').bind(key).run();
+  return 0;
+}
+
+const clientIp = (c: { req: { header: (k: string) => string | undefined } }) =>
+  c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for')?.split(',')[0]?.trim() || 'bilinmiyor';
+
+const dakika = (sn: number) => Math.max(1, Math.ceil(sn / 60));
+
 // ---- CSRF: veri degistiren isteklerde Origin ayni site olmali ----
 // Cerez zaten SameSite=Strict ama Hono govdeyi text/plain ve form
 // content-type'lariyla da JSON olarak ayristirdigi icin ikinci kemer.
@@ -114,7 +155,9 @@ api.use('*', async (c, next) => {
   const pw = c.env.PASSWORD;
   const path = c.req.path;
 
-  if (isPublicPath(path) || isPublicRead(c.req.method, path)) return next();
+  if (isPublicPath(path) || isPublicRead(c.req.method, path) || isPublicWrite(c.req.method, path)) {
+    return next();
+  }
 
   if (!pw) {
     if (openModeAllowed(c.env)) return next();
@@ -297,8 +340,16 @@ api.get('/products/:id', async (c) => {
   return c.json({ product: p, history: history.results ?? [], notifications: notifs.results ?? [] });
 });
 
-// URL onizleme (kaydetmeden once ne bulundugunu goster)
+// URL onizleme (kaydetmeden once ne bulundugunu goster) — ziyaretciye acik, sinirli
 api.post('/preview', async (c) => {
+  const wait = await limitHit(c.env, `preview:${clientIp(c)}`, PREVIEW_PER_IP, 3600);
+  if (wait) {
+    return c.json(
+      { error: `Çok fazla deneme yaptın. ${dakika(wait)} dakika sonra tekrar dene.` },
+      429,
+      { 'retry-after': String(wait) }
+    );
+  }
   const body = await c.req.json<{ url?: string }>().catch(() => ({}) as any);
   const url = String(body.url ?? '').trim();
   if (!/^https?:\/\//i.test(url)) return c.json({ error: 'Geçerli bir bağlantı yapıştır (https:// ile başlamalı)' }, 400);
@@ -352,8 +403,35 @@ api.post('/products', async (c) => {
   if (!/^https?:\/\//i.test(rawUrl)) return c.json({ error: 'Geçerli bir bağlantı gerekli' }, 400);
   const url = canonicalUrl(rawUrl);
   const site = detectSite(url);
-  const dup = await c.env.DB.prepare('SELECT id FROM products WHERE url = ?').bind(url).first();
-  if (dup) return c.json({ error: 'Bu ürün zaten takipte' }, 409);
+
+  // Ayni urun ikinci kez eklenmez: zaten takipte olani gosteririz, bosuna
+  // istek atilmaz (ve sinir tuketilmez).
+  const dup = await c.env.DB.prepare('SELECT id FROM products WHERE url = ?').bind(url).first<{ id: number }>();
+  if (dup) return c.json({ error: 'Bu ürün zaten takipte', productId: dup.id }, 409);
+
+  // Ziyaretci ekliyorsa sinirlar uygulanir; yonetici muaf.
+  const admin = Boolean(c.env.PASSWORD) && (await checkSession(c.env, readSessionCookie(c)));
+  if (!admin) {
+    const count = await c.env.DB.prepare('SELECT COUNT(*) AS n FROM products WHERE active = 1').first<{ n: number }>();
+    if ((count?.n ?? 0) >= MAX_ACTIVE_PRODUCTS) {
+      return c.json({ error: 'Takip listesi şu an dolu, yeni ürün eklenemiyor.' }, 503);
+    }
+    const ip = clientIp(c);
+    const waitIp = await limitHit(c.env, `add:${ip}`, ADD_PER_IP, 3600);
+    const waitAll = waitIp ? 0 : await limitHit(c.env, 'add:__all__', ADD_PER_HOUR_ALL, 3600);
+    const wait = Math.max(waitIp, waitAll);
+    if (wait) {
+      return c.json(
+        {
+          error: waitIp
+            ? `Saatte en fazla ${ADD_PER_IP} ürün ekleyebilirsin. ${dakika(wait)} dakika sonra tekrar dene.`
+            : `Site şu an yoğun. ${dakika(wait)} dakika sonra tekrar dene.`,
+        },
+        429,
+        { 'retry-after': String(wait) }
+      );
+    }
+  }
 
   const settings = await getSettings(c.env);
   const t = now();
