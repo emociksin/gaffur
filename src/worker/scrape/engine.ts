@@ -5,24 +5,27 @@ import { canonicalUrl, detectSite, discoverTrendyol, extractForSite } from './si
 import { fmtMoney } from './price';
 import { getSettings, insertNotification, now } from '../db';
 import { escTg, sendTelegram, tgLink } from '../telegram';
+import { readCapped, safeFetch, SsrfError } from './ssrf';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+const FETCH_HEADERS: Record<string, string> = {
+  'user-agent': UA,
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'accept-language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+  'cache-control': 'no-cache',
+  'upgrade-insecure-requests': '1',
+};
+
+// SSRF-guvenli, timeout'lu, boyut-tavanli fetch. Redirect'ler manuel dogrulanir.
 export async function directFetch(url: string): Promise<{ status: number; html: string }> {
-  const res = await fetch(url, {
-    redirect: 'follow',
-    headers: {
-      'user-agent': UA,
-      accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'accept-language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
-      'cache-control': 'no-cache',
-      'upgrade-insecure-requests': '1',
-    },
-  });
-  const html = await res.text();
+  const res = await safeFetch(url, FETCH_HEADERS);
+  const html = await readCapped(res);
   return { status: res.status, html };
 }
+
+export { SsrfError };
 
 function looksBlocked(status: number, html: string): boolean {
   if (status === 403 || status === 429 || status === 503) return true;
@@ -38,6 +41,7 @@ export async function firecrawlScrape(key: string, url: string): Promise<string>
     method: 'POST',
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({ url, formats: ['rawHtml'], timeout: 40000 }),
+    signal: AbortSignal.timeout(45000), // yerel fetch de asili kalmasin
   });
   const j: any = await res.json().catch(() => null);
   if (!res.ok || !j?.success) {
@@ -78,6 +82,10 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
         return { ...base, title: ext.title, error: 'Sayfa açıldı ama fiyat bulunamadı' };
       }
     } catch (e: any) {
+      // SSRF ihlali: URL guvensiz. Firecrawl'a (harici servise) iletme, hemen reddet.
+      if (e instanceof SsrfError) {
+        return { ...base, error: 'Bu adres güvenlik nedeniyle çekilemez' };
+      }
       blocked = true;
       directNote = e?.message ? String(e.message).slice(0, 120) : 'bağlantı hatası';
     }
