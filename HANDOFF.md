@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (47 test — parsePrice + SSRF), GitHub Actions CI
+- **Test:** Vitest (51 test — parsePrice + SSRF + kullanıcı akışı + crawl queue), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -86,13 +86,18 @@ varsayılan transport `CheerioCrawler` olabilir; Playwright yalnızca sonradan k
 JS zorunlu domainler için whitelist edilmelidir.
 
 ### Faz 3 — Crawlee Tarama Altyapısı
-- `crawl_jobs` Postgres tablosu tabanlı kuyruk (ADR-3)
-- Scheduler/worker ayrımı (mevcut monolitik cron.ts üçe bölünecek)
-- Crawlee entegrasyonu (CheerioCrawler varsayılan, Playwright whitelist)
-- Domain başına rate limit, adaptif frekans
-- Versiyonlu parser registry + hata oranı alarmı
-- Firecrawl yolu sökülecek (K3)
-- Kapsam: Vatan, İncehesap, Hepsiburada, üretici siteleri (K4)
+- [x] `crawl_jobs` SQLite/Postgres kalıcı kuyruğu: atomik claim, dedup, retry/backoff, stale-lock recovery
+- [x] Scheduler/queue/worker ayrımı (`crawl/scheduler.ts`, `crawl/queue.ts`, `crawl/worker.ts`)
+- [ ] Crawlee entegrasyonu (CheerioCrawler varsayılan, Playwright whitelist) **← sıradaki**
+- [ ] Domain başına rate limit, adaptif frekans
+- [ ] Versiyonlu parser registry + hata oranı alarmı
+- [ ] Firecrawl yolu sökülecek (K3)
+- [ ] Kapsam canlı doğrulama: Vatan, İncehesap, Hepsiburada, üretici siteleri (K4)
+
+Kuyruk notu: scheduler yalnızca sırası gelen ürün/kategorileri kuyruğa yazar. Worker işleri
+atomik `UPDATE … RETURNING` ile alır; aktif `(kind, entity_id)` partial unique index aynı
+işin yinelenmesini engeller. Hatalar 1/2/4 dakika artan gecikmeyle en fazla 3 kez denenir;
+30 dakikadan eski worker kilitleri otomatik kurtarılır.
 
 ### Faz 4-8 Özet
 - **Faz 4:** Stok zekâsı + gerçek fiyat referansı (price_baselines, stock_transitions)
@@ -118,7 +123,7 @@ JS zorunlu domainler için whitelist edilmelidir.
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (47 test)
+npm test           # vitest (51 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```

@@ -13,6 +13,10 @@ src/worker/          Cloudflare Worker (Hono API + cron)
   api.ts             REST rotaları (/api/*)
   auth.ts            Tek parola + HMAC imzalı cookie (admin) + çok kullanıcılı hesap (users/sessions)
   cron.ts            15 dk'da bir: sırası gelen ürünler (parti 10) + oto kategori keşfi (6 saatte bir, parti 2)
+  crawl/
+    scheduler.ts     Sırası gelen ürün/kategorileri crawl_jobs kuyruğuna yazar
+    queue.ts         Atomik claim, aktif iş dedup, retry/backoff, stale-lock recovery
+    worker.ts        Kuyruktaki işleri scrape engine ile çalıştırır
   db.ts              D1 yardımcıları, settings varsayılanları
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
   scrape/
@@ -27,6 +31,10 @@ scripts/             Canlı test harness'ı (aşağıda)
 public/              robots.txt, llms.txt, favicon (SEO dosyaları korunur)
 docs/                Mayıs 2026 holding-page dönemi arşivi
 ```
+
+Cron artık doğrudan tarama yapmaz: `scheduleDueJobs` kalıcı `crawl_jobs` kayıtlarını
+üretir, `runQueuedJobs` atomik claim ile işleri çalıştırır. Kuyruk SQLite ve Postgres'te
+aynı SQL davranışını kullanır; aktif varlık başına yalnız bir queued/running iş olabilir.
 
 Frontend'de yönetici oturumu ile kullanıcı hesabı ayrıdır: gizli `/yonetim` yolu tek
 parolalı yönetimi açar; üst çubuktaki **Hesabım** akışı ise `users/sessions` tabanlı
