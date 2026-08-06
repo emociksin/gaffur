@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 2 Tamamlandı, Faz 3 Sırada
+# Gaffur Handoff — Faz 3 Tamamlandı, Faz 4 Sırada
 
 ## Proje Nedir
 
@@ -71,7 +71,7 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 3
+## Sıradaki İş — Faz 4
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -88,11 +88,12 @@ JS zorunlu domainler için whitelist edilmelidir.
 ### Faz 3 — Crawlee Tarama Altyapısı
 - [x] `crawl_jobs` SQLite/Postgres kalıcı kuyruğu: atomik claim, dedup, retry/backoff, stale-lock recovery
 - [x] Scheduler/queue/worker ayrımı (`crawl/scheduler.ts`, `crawl/queue.ts`, `crawl/worker.ts`)
-- [x] Crawlee entegrasyonu (`@crawlee/cheerio`; direct → Crawlee → geçici Firecrawl fallback)
+- [x] Crawlee entegrasyonu (`@crawlee/cheerio`; direct → Crawlee)
 - [x] Domain başına dağıtık rate limit + hata halinde adaptif backoff
 - [x] Versiyonlu parser registry + saatlik hata oranı alarmı
-- [ ] Firecrawl yolu sökülecek (K3) **← sıradaki**
-- [ ] Kapsam canlı doğrulama: Vatan, İncehesap, Hepsiburada, üretici siteleri (K4)
+- [x] Firecrawl kodu/ayarı/UI'sı söküldü; eski DB motorları migration ile `auto`ya taşındı
+- [x] Kapsam canlı doğrulama: Vatan 8.499 TL/direct, İncehesap 999 TL/Crawlee,
+  Hepsiburada 1.999,90 TL/direct, Apple TR 8.999 TL/direct (2026-08-06)
 
 Kuyruk notu: scheduler yalnızca sırası gelen ürün/kategorileri kuyruğa yazar. Worker işleri
 atomik `UPDATE … RETURNING` ile alır; aktif `(kind, entity_id)` partial unique index aynı
@@ -103,8 +104,13 @@ Domain limiter notu: `crawl_domain_state` atomik slot dağıtır. Taban aralık 
 Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katlanır (üst sınır
 15 dk), başarıda taban aralığa döner. Slot bekleyen job deneme hakkı tüketmeden ertelenir.
 
-### Faz 4-8 Özet
-- **Faz 4:** Stok zekâsı + gerçek fiyat referansı (price_baselines, stock_transitions)
+### Faz 4 — Stok Zekâsı + Gerçek Fiyat Referansı **← sıradaki**
+- [ ] `price_baselines`: 10/30/90 gün medyanı, all-time low, gürültü filtresi
+- [ ] `stock_transitions`: 2 ardışık doğrulama, unknown güvenliği, cooldown
+- [ ] Stokta olmayan teklifleri en düşük fiyat hesabından çıkar
+- [ ] Baseline ve stok geçişlerini API/UI'da mevcut tasarım diliyle göster
+
+### Faz 5-8 Özet
 - **Faz 5:** Kargo, taksit, landed cost (gümrük PDF teyidi ön koşul)
 - **Faz 6:** Public SSR + SEO (ürün sayfaları, JSON-LD, sitemap)
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
@@ -135,7 +141,6 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ## Bilinen Sorunlar / Dikkat
 
 - **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
-- **Firecrawl hiç canlı test edilmedi** (anahtar yok)
 - **Gümrük oranları teyit edilmedi** (Karar 10813 PDF'i okunmadı)
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır

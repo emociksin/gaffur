@@ -12,7 +12,7 @@ const url = process.argv[2] ?? 'https://www.trendyol.com/sr?q=airpods+4';
   for (const i of items) console.log('-', i.price, '|', i.title.slice(0, 60), '|', i.url.slice(0, 80));
   if (items.length > 0) {
     console.log('\nilk urun tekil kontrol:');
-    const r = await scrapeUrl(items[0].url, 'auto', process.env.FIRECRAWL_KEY);
+    const r = await scrapeUrl(items[0].url, 'auto');
     console.log(JSON.stringify(r, null, 2));
   }
 })();

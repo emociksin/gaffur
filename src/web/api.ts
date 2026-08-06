@@ -117,11 +117,11 @@ export const api = {
   readOne: (id: number) => req<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST' }),
   clearNotifications: () => req<{ ok: boolean }>('/notifications', { method: 'DELETE' }),
 
-  // Gizli alanlar (telegram_token, firecrawl_key) maskeli doner; `has` bilgisi
+  // Gizli alanlar (telegram_token) maskeli doner; `has` bilgisi
   // alanin dolu olup olmadigini soyler. Maskeli deger geri gonderilirse sunucu
   // mevcut degeri korur.
   settings: () =>
-    req<{ settings: AppSettings; has: { telegram_token: boolean; firecrawl_key: boolean } }>('/settings'),
+    req<{ settings: AppSettings; has: { telegram_token: boolean } }>('/settings'),
   saveSettings: (s: Partial<AppSettings>) =>
     req<{ settings: AppSettings }>('/settings', { method: 'PUT', body: JSON.stringify(s) }),
   telegramDetect: (token: string) =>

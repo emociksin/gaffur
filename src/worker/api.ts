@@ -5,7 +5,7 @@ import type { Env } from './env';
 import type { AppSettings, Product } from '../shared/types';
 import { ensureOffer, getProduct, getSettings, insertNotification, now, setSetting, SETTINGS_DEFAULTS, writeOfferSnapshot } from './db';
 import { checkSession, generateSessionId, hashPassword, makeSession, rotateSessionSecret, safeEqual, SESSION_MAX_AGE_S, verifyPassword } from './auth';
-import { checkProduct, crawleeScrape, directFetch, firecrawlScrape, refreshListing, scrapeUrl } from './scrape/engine';
+import { checkProduct, crawleeScrape, directFetch, refreshListing, scrapeUrl } from './scrape/engine';
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
 import { detectChatId, sendTelegram } from './telegram';
 
@@ -358,8 +358,6 @@ api.post('/preview', async (c) => {
   const body = await c.req.json<{ url?: string }>().catch(() => ({}) as any);
   const url = String(body.url ?? '').trim();
   if (!/^https?:\/\//i.test(url)) return c.json({ error: 'Geçerli bir bağlantı yapıştır (https:// ile başlamalı)' }, 400);
-  const settings = await getSettings(c.env);
-
   if (isListingUrl(url)) {
     try {
       let html = '';
@@ -369,9 +367,7 @@ api.post('/preview', async (c) => {
       if (!items.length) {
         try {
           html = await crawleeScrape(url);
-        } catch {
-          if (settings.firecrawl_key) html = await firecrawlScrape(settings.firecrawl_key, url);
-        }
+        } catch { /* aşağıdaki boş sonuç hatası daha açıklayıcı */ }
         items = discoverTrendyol(html, 24);
       }
       if (!items.length)
@@ -390,7 +386,7 @@ api.post('/preview', async (c) => {
     }
   }
 
-  const r = await scrapeUrl(url, 'auto', settings.firecrawl_key || undefined);
+  const r = await scrapeUrl(url, 'auto');
   if (!r.ok) return c.json({ type: 'product', result: r, error: r.error }, 422);
   return c.json({ type: 'product', result: r });
 });
@@ -446,12 +442,12 @@ api.post('/products', async (c) => {
   const settings = await getSettings(c.env);
   const t = now();
   const alertMode = ['drop', 'target', 'any', 'off'].includes(String(body.alert_mode)) ? String(body.alert_mode) : 'drop';
-  const engine = ['auto', 'direct', 'firecrawl'].includes(String(body.engine)) ? String(body.engine) : 'auto';
+  const engine = ['auto', 'direct', 'crawlee'].includes(String(body.engine)) ? String(body.engine) : 'auto';
   const interval = Math.max(5, Math.min(1440, Number(body.interval_min) || Number(settings.default_interval) || 60));
   const target = body.target_price != null && Number(body.target_price) > 0 ? Number(body.target_price) : null;
   const threshold = Math.max(0, Math.min(90, Number(body.threshold_pct) || 0));
 
-  const r = await scrapeUrl(url, engine as any, settings.firecrawl_key || undefined);
+  const r = await scrapeUrl(url, engine as any);
 
   if (!r.ok && !body.force) {
     return c.json({ error: r.error ?? 'Ürün okunamadı', canForce: true }, 422);
@@ -713,7 +709,7 @@ api.delete('/notifications', async (c) => {
 // Gizli alanlar istemciye ACIK METIN gitmez; sadece "tanimli mi" bilgisi ve
 // tanimak icin maskeli bir onizleme doner. Kaydetmede maskeli deger gelirse
 // (kullanici alana dokunmamissa) mevcut deger korunur.
-const SECRET_SETTINGS = ['telegram_token', 'firecrawl_key'] as const;
+const SECRET_SETTINGS = ['telegram_token'] as const;
 // Maske ASCII: unicode bir isaret (•) kullanildiginda kodlama bozulmasi
 // maskeyi taninmaz hale getirip GERCEK ANAHTARIN uzerine yazilmasina yol aciyordu.
 const MASK = '****';
@@ -737,7 +733,7 @@ api.get('/settings', async (c) => {
   const s = await getSettings(c.env);
   return c.json({
     settings: publicSettings(s),
-    has: { telegram_token: Boolean(s.telegram_token), firecrawl_key: Boolean(s.firecrawl_key) },
+    has: { telegram_token: Boolean(s.telegram_token) },
   });
 });
 

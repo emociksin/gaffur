@@ -174,7 +174,7 @@ export function DetailModal({
             </span>
           )}
           <small className="mut">son kontrol {timeAgo(p.last_checked_at)}</small>
-          {p.last_engine && <small className="mut">kaynak: {p.last_engine === 'firecrawl' ? 'Firecrawl' : p.last_engine === 'crawlee' ? 'Crawlee' : p.last_engine === 'listing' ? 'liste' : 'doğrudan'}</small>}
+          {p.last_engine && <small className="mut">kaynak: {p.last_engine === 'crawlee' ? 'Crawlee' : p.last_engine === 'listing' ? 'liste' : 'doğrudan'}</small>}
         </div>
       </div>
 
@@ -276,7 +276,7 @@ export function DetailModal({
           <select value={form.engine} onChange={(e) => setForm({ ...form, engine: e.target.value })}>
             <option value="auto">Otomatik (önce doğrudan, olmadı Firecrawl)</option>
             <option value="direct">Sadece doğrudan</option>
-            <option value="firecrawl">Sadece Firecrawl</option>
+            <option value="crawlee">Sadece Crawlee</option>
           </select>
         </label>
       </div>

@@ -1,7 +1,7 @@
 // Worker ile web arasinda paylasilan tipler
 
 export type AlertMode = 'drop' | 'target' | 'any' | 'off';
-export type Engine = 'auto' | 'direct' | 'firecrawl';
+export type Engine = 'auto' | 'direct' | 'crawlee';
 
 export interface Category {
   id: number;
@@ -88,7 +88,6 @@ export interface Watch {
 export interface AppSettings {
   telegram_token: string;
   telegram_chat: string;
-  firecrawl_key: string;
   default_interval: string;
   notify_stock: string; // '1' | '0'
   notify_rise: string; // '1' | '0'

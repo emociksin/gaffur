@@ -43,22 +43,8 @@ function looksBlocked(status: number, html: string): boolean {
   return false;
 }
 
-export async function firecrawlScrape(key: string, url: string): Promise<string> {
-  const res = await fetch('https://api.firecrawl.dev/v2/scrape', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ url, formats: ['rawHtml'], timeout: 40000 }),
-    signal: AbortSignal.timeout(45000), // yerel fetch de asili kalmasin
-  });
-  const j: any = await res.json().catch(() => null);
-  if (!res.ok || !j?.success) {
-    throw new Error(String(j?.error ?? `HTTP ${res.status}`));
-  }
-  return String(j.data?.rawHtml ?? j.data?.html ?? '');
-}
-
 /** Tek URL'yi coz: motor sirasina gore dener, ilk fiyat bulan kazanir */
-export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string): Promise<ScrapeResult> {
+export async function scrapeUrl(rawUrl: string, engine: Engine): Promise<ScrapeResult> {
   const url = canonicalUrl(rawUrl);
   const site = detectSite(url);
   const base: ScrapeResult = { ok: false, url, site };
@@ -66,7 +52,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
   let blocked = false;
   let lastParserVersion: string | undefined;
 
-  if (engine !== 'firecrawl') {
+  if (engine !== 'crawlee') {
     try {
       const { status, html } = await directFetch(url);
       const parsed = parseWithRegistry(site, html);
@@ -93,7 +79,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
         return { ...base, title: ext.title, parserVersion: parsed.parserVersion, error: 'Sayfa açıldı ama fiyat bulunamadı' };
       }
     } catch (e: any) {
-      // SSRF ihlali: URL guvensiz. Firecrawl'a (harici servise) iletme, hemen reddet.
+      // SSRF ihlali: URL guvensiz, fallback transport'a iletme.
       if (e instanceof SsrfError) {
         return { ...base, error: 'Bu adres güvenlik nedeniyle çekilemez' };
       }
@@ -102,7 +88,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
     }
   }
 
-  if (engine === 'auto' && (blocked || directNote)) {
+  if (engine === 'crawlee' || (engine === 'auto' && (blocked || directNote))) {
     try {
       const { status, html } = await crawleeFetch(url, FETCH_HEADERS);
       const parsed = parseWithRegistry(site, html);
@@ -129,37 +115,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
     }
   }
 
-  if (engine !== 'direct' && fcKey) {
-    try {
-      const html = await firecrawlScrape(fcKey, url);
-      const parsed = parseWithRegistry(site, html);
-      const ext = parsed.data;
-      lastParserVersion = parsed.parserVersion;
-      if (ext.price != null) {
-        return {
-          ...base,
-          ok: true,
-          engine: 'firecrawl',
-          parserVersion: parsed.parserVersion,
-          title: ext.title,
-          image: ext.image,
-          price: ext.price,
-          listPrice: ext.listPrice,
-          currency: ext.currency ?? 'TRY',
-          inStock: ext.inStock,
-        };
-      }
-      return { ...base, title: ext.title, parserVersion: parsed.parserVersion, error: 'Firecrawl sayfayı getirdi ama fiyat çözülemedi' };
-    } catch (e: any) {
-      return { ...base, error: `Firecrawl hatası: ${String(e?.message ?? e).slice(0, 160)}` };
-    }
-  }
-
-  const hint =
-    !fcKey && blocked && engine !== 'direct'
-      ? ' — Ayarlar bölümünden Firecrawl anahtarı eklersen bu site de çekilebilir'
-      : '';
-  return { ...base, parserVersion: lastParserVersion, error: `Siteye doğrudan erişilemedi (${directNote})${hint}` };
+  return { ...base, parserVersion: lastParserVersion, error: `Siteye erişilemedi (${directNote})` };
 }
 
 // ---- fiyat guncelleme + alarm ----
@@ -437,7 +393,7 @@ export async function applyPriceUpdate(
 export async function checkProduct(env: Env, p: Product, settings?: AppSettings): Promise<CheckOutcome> {
   const s = settings ?? (await getSettings(env));
   const t = now();
-  const r = await scrapeUrl(p.url, p.engine, s.firecrawl_key || undefined);
+  const r = await scrapeUrl(p.url, p.engine);
   if (r.parserVersion) await recordParserOutcome(env, r.site, r.parserVersion, r.ok && r.price != null, t);
 
   if (!r.ok || r.price == null) {
@@ -509,15 +465,7 @@ export async function refreshListing(
     try {
       html = await crawleeScrape(category.source_url);
     } catch (crawlError: any) {
-      if (settings.firecrawl_key) {
-        try {
-          html = await firecrawlScrape(settings.firecrawl_key, category.source_url);
-        } catch (e2: any) {
-          return { ok: false, found: 0, added: 0, updated: 0, error: String(e2?.message ?? crawlError).slice(0, 160) };
-        }
-      } else {
-        return { ok: false, found: 0, added: 0, updated: 0, error: String(crawlError?.message ?? e).slice(0, 160) };
-      }
+      return { ok: false, found: 0, added: 0, updated: 0, error: String(crawlError?.message ?? e).slice(0, 160) };
     }
   }
 

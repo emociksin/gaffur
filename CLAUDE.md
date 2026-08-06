@@ -27,7 +27,7 @@ src/worker/          Cloudflare Worker (Hono API + cron)
     price.ts         parsePrice (TR/EN sayı biçimleri), para birimi tespiti
     parse.ts         Genel katman: JSON-LD → meta/microdata → gömülü JSON → bağlamsal regex; bracedJson (brace-balance)
     sites.ts         Site tespiti, URL kanonlaştırma, Trendyol/HB/Amazon/N11 adaptörleri, discoverTrendyol (liste keşfi)
-    engine.ts        scrapeUrl (direct→Firecrawl fallback), checkProduct, applyPriceUpdate (alarm mantığı), refreshListing
+    engine.ts        scrapeUrl (direct→Crawlee), checkProduct, applyPriceUpdate (alarm mantığı), refreshListing
 src/web/             React SPA (Vite) — dist/client'a derlenir, Worker assets olarak sunar
 src/shared/types.ts  Ortak tipler
 migrations/          D1 şema (categories, products, price_history, notifications, settings)
@@ -63,9 +63,7 @@ uygulama içidir; global yönetici Telegram sohbetine gönderilmez.
   Bu makinede Node(undici) → Hepsiburada 200; workerd (wrangler dev) → aynı URL 403.
   Trendyol/N11/Teknosa/Amazon datacenter'a kapalı. **workerd üzerinden canlı çalışan
   siteler: Vatan, İncehesap** (genel JSON-LD parser ile uçtan uca doğrulandı).
-  Kapalı siteler için çözüm ayarlardan **Firecrawl anahtarı** (auto modda önce ücretsiz
-  doğrudan denenir, kredi boşa gitmez). Firecrawl yolu canlı test EDİLMEDİ (anahtar yok) —
-  REST çağrısı `POST v2/scrape formats:["rawHtml"]`, dönen HTML aynı parser zincirinden geçer.
+  Bot korumalı sitelerde yerleşik Crawlee transport'u kullanılır; harici servis anahtarı gerekmez.
 - **K4c Crawlee spike (2026-08-06):** Aynı Trendyol `sr?q=airpods+4` URL'sinde
   `directFetch` 403/4.899 bayt ve 0 ürün verirken Crawlee `CheerioCrawler`
   200/~562 KB aldı; `discoverTrendyol` 8 ürün çıkardı. İlk ürün detayı da 200/~488 KB,
@@ -109,7 +107,7 @@ DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
 2. Opsiyonel: `DATABASE_URL=postgres://...` (yoksa SQLite)
 3. Build: `npm run build && npm run build:node`
 4. Başlat: `node dist/server/index.mjs`
-5. Uygulama ayarlarından Telegram bot + (istenirse) Firecrawl anahtarı gir
+5. Uygulama ayarlarından Telegram botunu bağla
 
 ## Kurallar
 

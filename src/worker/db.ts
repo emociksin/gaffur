@@ -6,7 +6,6 @@ export const now = () => Math.floor(Date.now() / 1000);
 export const SETTINGS_DEFAULTS: AppSettings = {
   telegram_token: '',
   telegram_chat: '',
-  firecrawl_key: '',
   default_interval: '60',
   notify_stock: '1',
   notify_rise: '0',

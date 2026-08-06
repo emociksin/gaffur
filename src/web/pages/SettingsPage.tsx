@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AppSettings, Category } from '../../shared/types';
 import { api } from '../api';
-import { IconCheck, IconDownload, IconSend, IconTrash, Spinner, Toggle, useToast } from '../ui';
+import { IconDownload, IconSend, IconTrash, Spinner, Toggle, useToast } from '../ui';
 
 export function SettingsPage({ open }: { open: boolean }) {
   const toast = useToast();
@@ -10,9 +10,8 @@ export function SettingsPage({ open }: { open: boolean }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [tgName, setTgName] = useState('');
 
-  // Sunucu gizli anahtarlari maskeli gonderir (fc-1a34****9x2b). Kullanici alana
-  // dokunmazsa maskeli deger geri gider ve sunucu mevcut degeri korur.
-  const [has, setHas] = useState({ telegram_token: false, firecrawl_key: false });
+  // Sunucu Telegram token'ini maskeli gönderir; kullanıcı dokunmazsa mevcut değer korunur.
+  const [has, setHas] = useState({ telegram_token: false });
 
   const load = async () => {
     const [a, c] = await Promise.all([api.settings(), api.categories()]);
@@ -144,36 +143,6 @@ export function SettingsPage({ open }: { open: boolean }) {
           </button>
         </div>
         {tgName && <p className="mut small">Bağlı sohbet: {tgName}</p>}
-      </section>
-
-      <section className="set-card">
-        <div className="set-head">
-          <h3>Firecrawl (bot koruması aşma)</h3>
-          <span className={`pill ${has.firecrawl_key ? 'pill-ok' : ''}`}>{has.firecrawl_key ? 'aktif' : 'yok'}</span>
-        </div>
-        <p className="mut">
-          Bazı siteler sunucudan gelen istekleri engeller. Firecrawl anahtarı eklersen Gaffur bu siteleri Firecrawl
-          üzerinden çeker (önce her zaman ücretsiz doğrudan erişim denenir, kredi boşa harcanmaz).{' '}
-          <a href="https://www.firecrawl.dev" target="_blank" rel="noreferrer">
-            firecrawl.dev
-          </a>{' '}
-          adresinden ücretsiz anahtar alabilirsin.
-        </p>
-        <div className="set-row">
-          <input
-            placeholder="fc-..."
-            value={s.firecrawl_key}
-            onChange={(e) => setS({ ...s, firecrawl_key: e.target.value })}
-            onFocus={(e) => {
-              if (e.target.value.includes('****')) setS({ ...s, firecrawl_key: '' });
-            }}
-            spellCheck={false}
-            type="password"
-          />
-          <button className="btn btn-primary" onClick={() => save({ firecrawl_key: s.firecrawl_key })} disabled={busy === 'save'}>
-            <IconCheck size={14} /> Kaydet
-          </button>
-        </div>
       </section>
 
       <section className="set-card">

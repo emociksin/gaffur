@@ -162,7 +162,7 @@ export function AddModal({
               <span className="preview-price">{money(preview.price ?? null, preview.currency ?? 'TRY')}</span>
               {preview.inStock === false && <span className="meta-err">stokta yok</span>}
               <small className="preview-engine">
-                kaynak: {preview.engine === 'firecrawl' ? 'Firecrawl' : preview.engine === 'crawlee' ? 'Crawlee' : 'doğrudan erişim'}
+                kaynak: {preview.engine === 'crawlee' ? 'Crawlee' : 'doğrudan erişim'}
               </small>
             </div>
           </div>

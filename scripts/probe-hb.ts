@@ -13,6 +13,6 @@ import { directFetch, scrapeUrl } from '../src/worker/scrape/engine';
   for (const l of links) console.log('-', l.slice(0, 100));
   if (!links.length) return console.log('link bulunamadi');
   console.log('\nilk urun scrapeUrl testi:');
-  const r = await scrapeUrl(links[0], 'auto', process.env.FIRECRAWL_KEY);
+  const r = await scrapeUrl(links[0], 'auto');
   console.log(JSON.stringify(r, null, 2));
 })();
