@@ -74,6 +74,14 @@ export async function failJob(env: Env, job: CrawlJob, error: unknown, t: number
   ).bind(retry ? 'queued' : 'failed', retry ? t + delay : t, message.slice(0, 1000), t, retry ? null : t, job.id).run();
 }
 
+export async function deferJob(env: Env, jobId: number, runAfter: number, t: number): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE crawl_jobs SET status = 'queued', run_after = ?, locked_at = NULL, locked_by = NULL,
+       attempts = CASE WHEN attempts > 0 THEN attempts - 1 ELSE 0 END, updated_at = ?
+     WHERE id = ? AND status = 'running'`
+  ).bind(runAfter, t, jobId).run();
+}
+
 export async function recoverStaleJobs(env: Env, t: number, staleAfterS = 30 * 60): Promise<number> {
   const result = await env.DB.prepare(
     `UPDATE crawl_jobs SET status = 'queued', locked_at = NULL, locked_by = NULL,

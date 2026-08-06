@@ -16,6 +16,7 @@ src/worker/          Cloudflare Worker (Hono API + cron)
   crawl/
     scheduler.ts     Sırası gelen ürün/kategorileri crawl_jobs kuyruğuna yazar
     queue.ts         Atomik claim, aktif iş dedup, retry/backoff, stale-lock recovery
+    domain-rate.ts   Domain bazlı atomik slot + başarısızlıkta adaptif backoff
     worker.ts        Kuyruktaki işleri scrape engine ile çalıştırır
   db.ts              D1 yardımcıları, settings varsayılanları
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi

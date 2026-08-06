@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (55 test — parsePrice + SSRF + Crawlee SSRF + kullanıcı akışı + crawl queue), GitHub Actions CI
+- **Test:** Vitest (58 test — parsePrice + SSRF + Crawlee SSRF + kullanıcı akışı + crawl queue/rate limit), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -89,8 +89,8 @@ JS zorunlu domainler için whitelist edilmelidir.
 - [x] `crawl_jobs` SQLite/Postgres kalıcı kuyruğu: atomik claim, dedup, retry/backoff, stale-lock recovery
 - [x] Scheduler/queue/worker ayrımı (`crawl/scheduler.ts`, `crawl/queue.ts`, `crawl/worker.ts`)
 - [x] Crawlee entegrasyonu (`@crawlee/cheerio`; direct → Crawlee → geçici Firecrawl fallback)
-- [ ] Domain başına rate limit, adaptif frekans **← sıradaki**
-- [ ] Versiyonlu parser registry + hata oranı alarmı
+- [x] Domain başına dağıtık rate limit + hata halinde adaptif backoff
+- [ ] Versiyonlu parser registry + hata oranı alarmı **← sıradaki**
 - [ ] Firecrawl yolu sökülecek (K3)
 - [ ] Kapsam canlı doğrulama: Vatan, İncehesap, Hepsiburada, üretici siteleri (K4)
 
@@ -98,6 +98,10 @@ Kuyruk notu: scheduler yalnızca sırası gelen ürün/kategorileri kuyruğa yaz
 atomik `UPDATE … RETURNING` ile alır; aktif `(kind, entity_id)` partial unique index aynı
 işin yinelenmesini engeller. Hatalar 1/2/4 dakika artan gecikmeyle en fazla 3 kez denenir;
 30 dakikadan eski worker kilitleri otomatik kurtarılır.
+
+Domain limiter notu: `crawl_domain_state` atomik slot dağıtır. Taban aralık Trendyol 3 sn,
+Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katlanır (üst sınır
+15 dk), başarıda taban aralığa döner. Slot bekleyen job deneme hakkı tüketmeden ertelenir.
 
 ### Faz 4-8 Özet
 - **Faz 4:** Stok zekâsı + gerçek fiyat referansı (price_baselines, stock_transitions)
@@ -123,7 +127,7 @@ işin yinelenmesini engeller. Hatalar 1/2/4 dakika artan gecikmeyle en fazla 3 k
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (55 test)
+npm test           # vitest (58 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```

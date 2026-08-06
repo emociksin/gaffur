@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { LocalD1 } from '../src/server/d1';
-import { claimJob, completeJob, enqueueJob, failJob, recoverStaleJobs } from '../src/worker/crawl/queue';
+import { claimJob, completeJob, deferJob, enqueueJob, failJob, recoverStaleJobs } from '../src/worker/crawl/queue';
 
 describe('crawl_jobs kuyruğu', () => {
   let db: LocalD1;
@@ -37,6 +37,15 @@ describe('crawl_jobs kuyruğu', () => {
     const row = await db.prepare('SELECT status, result_json FROM crawl_jobs WHERE id = ?').bind(job!.id).first<any>();
     expect(row).toEqual({ status: 'completed', result_json: '{"ok":true}' });
     expect(await enqueueJob(env, { kind: 'product', entityId: 1, url: 'https://a.test/1', runAfter: t + 2 }, t + 2)).toBe(true);
+  });
+
+  it('domain slotu yoksa deneme hakkını tüketmeden işi erteler', async () => {
+    await enqueueJob(env, { kind: 'product', entityId: 1, url: 'https://a.test/1', runAfter: t }, t);
+    const job = await claimJob(env, 'worker-a', t);
+    expect(job?.attempts).toBe(1);
+    await deferJob(env, job!.id, t + 30, t);
+    const row = await db.prepare('SELECT status, attempts, run_after FROM crawl_jobs WHERE id = ?').bind(job!.id).first<any>();
+    expect(row).toEqual({ status: 'queued', attempts: 0, run_after: t + 30 });
   });
 
   it('hatalı işi gecikmeli yeniden kuyruğa alır ve kilitli kalmış işi kurtarır', async () => {

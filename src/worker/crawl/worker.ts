@@ -1,7 +1,8 @@
 import type { Env } from '../env';
 import { getProduct, getSettings, now } from '../db';
 import { checkProduct, refreshListing } from '../scrape/engine';
-import { claimJob, completeJob, failJob, recoverStaleJobs } from './queue';
+import { claimJob, completeJob, deferJob, failJob, recoverStaleJobs } from './queue';
+import { acquireDomainSlot, recordDomainResult } from './domain-rate';
 
 export interface WorkerReport {
   products: number;
@@ -19,6 +20,11 @@ export async function runQueuedJobs(env: Env, limit = 12): Promise<WorkerReport>
   for (let i = 0; i < limit; i++) {
     const job = await claimJob(env, workerId, now());
     if (!job) break;
+    const slot = await acquireDomainSlot(env, job.url, now());
+    if (!slot.acquired) {
+      await deferJob(env, job.id, slot.retryAt, now());
+      continue;
+    }
     try {
       if (job.kind === 'product') {
         const product = await getProduct(env, job.entity_id);
@@ -27,6 +33,7 @@ export async function runQueuedJobs(env: Env, limit = 12): Promise<WorkerReport>
         report.products++;
         if (outcome.changed) report.changed++;
         if (!outcome.ok) report.failed++;
+        await recordDomainResult(env, slot.domain, outcome.ok, now());
         await completeJob(env, job.id, outcome, now());
       } else {
         const category = await env.DB.prepare(
@@ -36,10 +43,12 @@ export async function runQueuedJobs(env: Env, limit = 12): Promise<WorkerReport>
         const outcome = await refreshListing(env, category, settings);
         report.listings++;
         if (!outcome.ok) report.failed++;
+        await recordDomainResult(env, slot.domain, outcome.ok, now());
         await completeJob(env, job.id, outcome, now());
       }
     } catch (error) {
       report.failed++;
+      await recordDomainResult(env, slot.domain, false, now());
       await failJob(env, job, error, now());
     }
     if (i < limit - 1) await new Promise((resolve) => setTimeout(resolve, 400));
