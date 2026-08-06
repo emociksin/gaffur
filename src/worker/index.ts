@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import api from './api';
-import { runScheduled } from './cron';
 import type { Env } from './env';
 
 // `app` disari aciliyor: Node/Docker girisi (src/server/index.ts) ayni uygulamayi
@@ -52,9 +51,4 @@ app.notFound((c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
-export default {
-  fetch: app.fetch,
-  scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runScheduled(env));
-  },
-} satisfies ExportedHandler<Env>;
+export default { fetch: app.fetch };

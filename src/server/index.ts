@@ -89,7 +89,7 @@ const ASSETS = {
       },
     });
   },
-} satisfies Pick<Fetcher, 'fetch'>;
+} satisfies { fetch(request: Request): Promise<Response> };
 
 const env = {
   DB: db,
