@@ -1,8 +1,5 @@
 // Node/Docker girisi — Coolify gibi kendi sunucunda calistirmak icin.
-// Ayni Hono uygulamasini kullanir; Cloudflare'e ozgu uc sey burada karsilanir:
-//   D1        -> node:sqlite (LocalD1)
-//   ASSETS    -> dist/client'tan statik sunum + SPA yedegi
-//   cron      -> setInterval ile runScheduled
+// D1 arayuzu: DATABASE_URL varsa Postgres, yoksa SQLite.
 import { serve } from '@hono/node-server';
 import { readFileSync, readdirSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { dirname, extname, join, resolve, sep } from 'node:path';
@@ -10,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { app } from '../worker/index';
 import { runScheduled } from '../worker/cron';
 import { LocalD1 } from './d1';
+import { PgD1 } from './pg';
 import type { Env } from '../worker/env';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -17,31 +15,39 @@ const ROOT = resolve(HERE, '..', '..');
 const CLIENT_DIR = resolve(process.env.CLIENT_DIR || join(ROOT, 'dist', 'client'));
 const MIGRATIONS_DIR = resolve(process.env.MIGRATIONS_DIR || join(ROOT, 'migrations'));
 const DB_PATH = process.env.DB_PATH || join(ROOT, 'data', 'gaffur.db');
+const DATABASE_URL = process.env.DATABASE_URL;
 const PORT = Number(process.env.PORT || 3000);
 const CRON_MS = Number(process.env.CRON_INTERVAL_MIN || 15) * 60_000;
 
 // ---- veritabani + migration ----
-mkdirSync(dirname(DB_PATH), { recursive: true });
-const db = new LocalD1(DB_PATH);
+let db: LocalD1 | PgD1;
 
-function runMigrations(): void {
-  const raw = db.raw();
+if (DATABASE_URL) {
+  console.log('[db] Postgres modu');
+  db = new PgD1(DATABASE_URL);
+  await db.runMigrations(MIGRATIONS_DIR);
+} else {
+  console.log('[db] SQLite modu');
+  mkdirSync(dirname(DB_PATH), { recursive: true });
+  const sqliteDb = new LocalD1(DB_PATH);
+  const raw = sqliteDb.raw();
   raw.exec('CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at INTEGER NOT NULL)');
   const applied = new Set(
     (raw.prepare('SELECT name FROM _migrations').all() as { name: string }[]).map((r) => r.name)
   );
-  if (!existsSync(MIGRATIONS_DIR)) return;
-  const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-  for (const f of files) {
-    if (applied.has(f)) continue;
-    raw.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-    raw.prepare('INSERT INTO _migrations (name, applied_at) VALUES (?, ?)').run(f, Math.floor(Date.now() / 1000));
-    console.log('[migration] uygulandi:', f);
+  if (existsSync(MIGRATIONS_DIR)) {
+    const files = readdirSync(MIGRATIONS_DIR)
+      .filter((f) => f.endsWith('.sql') && !f.endsWith('.pg.sql'))
+      .sort();
+    for (const f of files) {
+      if (applied.has(f)) continue;
+      raw.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
+      raw.prepare('INSERT INTO _migrations (name, applied_at) VALUES (?, ?)').run(f, Math.floor(Date.now() / 1000));
+      console.log('[migration] uygulandi:', f);
+    }
   }
+  db = sqliteDb;
 }
-runMigrations();
 
 // ---- statik varliklar (ASSETS binding karsiligi) ----
 const MIME: Record<string, string> = {

@@ -58,29 +58,34 @@ docs/                Mayıs 2026 holding-page dönemi arşivi
 
 ```bash
 npm run dev        # sadece Vite (API proxy 8787'ye)
-npm start          # build + wrangler dev :8787 (tam uygulama, lokal D1)
+npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm run db:local   # migration'ları lokal D1'e uygula
-npm run deploy     # build + wrangler deploy
-npx tsx scripts/test-parse.ts      # parsePrice birim testleri (her parser değişikliğinde çalıştır)
+npm test           # vitest (parsePrice + SSRF testleri)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
-node scripts/probe-workerd.mjs     # wrangler dev AYAKTAYKEN: workerd üzerinden gerçek site testi
 ```
 
-## Deploy (gaffur.net)
+## Veritabanı
 
-1. `npx wrangler login`
-2. `npx wrangler d1 create gaffur-db` → çıkan id'yi `wrangler.jsonc` → `database_id`'ye yaz
-3. `npm run db:remote`
-4. `npx wrangler secret put PASSWORD` (uygulama giriş parolası)
-5. `npm run deploy`
-6. Cloudflare dash → Workers & Pages → gaffur → Settings → Domains & Routes → **Add custom domain: gaffur.net** (DNS zaten Cloudflare'de, otomatik bağlanır)
-7. Uygulama ayarlarından Telegram bot + (istenirse) Firecrawl anahtarı gir
+`DATABASE_URL` ortam değişkeni varsa **Postgres**, yoksa **SQLite** (`data/gaffur.db`).
+Migration'lar açılışta otomatik uygulanır (SQLite: `*.sql`, Postgres: `*.pg.sql`).
+
+SQLite → Postgres göçü:
+```bash
+DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
+```
+
+## Deploy (gaffur.net — Coolify/Docker)
+
+1. Coolify'da ortam değişkeni: `PASSWORD=...`
+2. Opsiyonel: `DATABASE_URL=postgres://...` (yoksa SQLite)
+3. Build: `npm run build && npm run build:node`
+4. Başlat: `node dist/server/index.mjs`
+5. Uygulama ayarlarından Telegram bot + (istenirse) Firecrawl anahtarı gir
 
 ## Kurallar
 
-- Yeni bağımlılık ekleme (hono, react, react-dom dışında runtime bağımlılık yok; grafik SVG el yapımı).
+- Yeni bağımlılık ekleme (hono, react, react-dom, postgres dışında runtime bağımlılık yok; grafik SVG el yapımı).
 - UI metinleri basit Türkçe; emoji yok (▼▲◎ gibi unicode işaretler serbest).
 - Fiyat karşılaştırmaları 0.01 toleransla (`applyPriceUpdate`).
 - `local `.wrangler/` state'i ve `dist/` git'e girmez.
