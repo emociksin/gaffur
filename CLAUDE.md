@@ -54,6 +54,12 @@ uygulama içidir; global yönetici Telegram sohbetine gönderilmez.
   Kapalı siteler için çözüm ayarlardan **Firecrawl anahtarı** (auto modda önce ücretsiz
   doğrudan denenir, kredi boşa gitmez). Firecrawl yolu canlı test EDİLMEDİ (anahtar yok) —
   REST çağrısı `POST v2/scrape formats:["rawHtml"]`, dönen HTML aynı parser zincirinden geçer.
+- **K4c Crawlee spike (2026-08-06):** Aynı Trendyol `sr?q=airpods+4` URL'sinde
+  `directFetch` 403/4.899 bayt ve 0 ürün verirken Crawlee `CheerioCrawler`
+  200/~562 KB aldı; `discoverTrendyol` 8 ürün çıkardı. İlk ürün detayı da 200/~488 KB,
+  AirPods 4 ANC 8.499 TL ve stokta olarak mevcut parser ile çözüldü. Playwright gerekmedi.
+  Faz 3 transport varsayılanı CheerioCrawler; Playwright yalnız kanıtlanan JS-zorunlu
+  domainler için whitelist.
 - **Alarm zinciri doğrulandı:** 89.999→84.999 senaryosunda notification 'drop' (%5.6),
   fırsat şeridi (%7.6/7g), grafik, CSV (BOM+noktalı virgül, Excel-TR) çalışıyor.
 - Kategori takibi = Trendyol liste URL'si kaynaklı kategori: `refreshListing` tek fetch'le

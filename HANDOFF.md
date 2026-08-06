@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 2 Tamamlandı, Faz 3'e Hazır
+# Gaffur Handoff — Faz 2 Tamamlandı, Faz 3 Sırada
 
 ## Proje Nedir
 
@@ -71,12 +71,19 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 2 Kalan + Faz 3
+## Sıradaki İş — Faz 3
 
-### Faz 2 Kalan (küçük)
+### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
 - [x] Watches'ı bildirim zincirine bağlama (kullanıcı bazlı uygulama içi hedef/düşüş/stok bildirimleri)
-- [ ] **K4c Spike (~30 dk):** Crawlee'nin Trendyol bot korumasını aşıp aşamadığını test et
+- [x] **K4c Spike:** Crawlee `CheerioCrawler` Trendyol bot korumasını aştı; Playwright gerekmedi
+
+K4c canlı ölçümü (2026-08-06): aynı `airpods 4` arama URL'si mevcut `directFetch`
+ile HTTP 403 / 4.899 bayt / 0 ürün verdi. Crawlee `CheerioCrawler` ile HTTP 200 /
+~562 KB alındı ve mevcut `discoverTrendyol` parser'ı 8/8 ürün çıkardı. İlk ürün detayında
+HTTP 200 / ~488 KB; AirPods 4 ANC = 8.499 TL ve stokta olarak çözüldü. Sonuç: Faz 3'te
+varsayılan transport `CheerioCrawler` olabilir; Playwright yalnızca sonradan kanıtlanan
+JS zorunlu domainler için whitelist edilmelidir.
 
 ### Faz 3 — Crawlee Tarama Altyapısı
 - `crawl_jobs` Postgres tablosu tabanlı kuyruk (ADR-3)
@@ -118,7 +125,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 
 ## Bilinen Sorunlar / Dikkat
 
-- **Trendyol erişilemez:** 47 ardışık hata, bot koruması. Crawlee spike yapılmadı henüz
+- **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
 - **Firecrawl hiç canlı test edilmedi** (anahtar yok)
 - **Gümrük oranları teyit edilmedi** (Karar 10813 PDF'i okunmadı)
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
