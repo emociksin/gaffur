@@ -73,18 +73,15 @@ export function SetupNotice({ onCancel }: { onCancel?: () => void }) {
         <p className="login-sub">Yönetim henüz açılmadı</p>
         <div className="setup-warn">
           Site ziyaretçilere açık ve çalışıyor; ürünler ve fiyatlar herkes tarafından
-          görülebiliyor. Ancak <b>yönetim</b> (ürün ekleme/silme, ayarlar) parola tanımlı
-          olmadığı için kapalı — parolasız açılsaydı Telegram ve Firecrawl anahtarların da
-          herkese görünür olurdu.
+          görülebiliyor. Ancak <b>yönetim</b> (ürün ekleme/silme, bildirimler ve ayarlar)
+          parola tanımlı olmadığı için güvenli biçimde kapalı.
         </div>
         <p className="mut small">
-          Kendi sunucunda (Coolify/Docker): <b>Environment Variables</b> bölümüne aşağıdaki
-          değişkeni ekle, değeri kendi belirlediğin parola olsun, sonra yeniden dağıt.
+          Coolify'da <b>Environment Variables</b> bölümüne aşağıdaki değişkenleri ekle,
+          parolayı kendin belirle ve sonra yeniden dağıt.
         </p>
-        <code className="setup-cmd">PASSWORD=&lt;seçtiğin parola&gt;</code>
-        <p className="mut small">
-          Cloudflare Workers'a dağıtıyorsan: <code>npx wrangler secret put PASSWORD</code>
-        </p>
+        <code className="setup-cmd">PASSWORD=&lt;seçtiğin güçlü parola&gt;</code>
+        <code className="setup-cmd">PUBLIC_BASE_URL=https://gaffur.net</code>
         <p className="mut small">
           Yerel geliştirmede parolasız çalışmak istersen proje kökündeki <code>.dev.vars</code>{' '}
           dosyasına <code>ALLOW_OPEN=1</code> yaz. Bu dosya deploy edilmez.
