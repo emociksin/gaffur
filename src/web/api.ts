@@ -8,6 +8,7 @@ import type {
   Product,
   ScrapeResult,
   Summary,
+  Watch,
 } from '../shared/types';
 
 export class ApiError extends Error {
@@ -38,7 +39,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     /* csv vb. */
   }
   if (!res.ok) {
-    if (res.status === 401 && path !== '/login' && path !== '/me') {
+    if (res.status === 401 && path !== '/login' && path !== '/me' && !path.startsWith('/auth/') && !path.startsWith('/watches')) {
       window.dispatchEvent(new CustomEvent('gfr-unauthorized'));
     }
     throw new ApiError(data?.error ?? `Hata (${res.status})`, res.status, Boolean(data?.canForce));
@@ -64,6 +65,15 @@ export const api = {
       body: JSON.stringify({ email, password, kvkk_consent: kvkkConsent }),
     }),
   userLogout: () => req<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  userNotifications: () => req<{ notifications: Notification[] }>('/auth/notifications'),
+  readUserNotifications: () => req<{ ok: boolean }>('/auth/notifications/read-all', { method: 'POST' }),
+  watches: () => req<{ watches: Watch[] }>('/watches'),
+  addWatch: (productId: number, targetPrice?: number | null, thresholdPct = 0) =>
+    req<{ ok: boolean; watchId: number }>('/watches', {
+      method: 'POST',
+      body: JSON.stringify({ product_id: productId, target_price: targetPrice ?? null, threshold_pct: thresholdPct }),
+    }),
+  deleteWatch: (id: number) => req<{ ok: boolean }>(`/watches/${id}`, { method: 'DELETE' }),
 
   summary: () => req<Summary>('/summary'),
   products: () => req<{ products: Product[] }>('/products'),

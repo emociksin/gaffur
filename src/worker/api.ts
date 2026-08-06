@@ -63,7 +63,12 @@ async function clearRateLimit(env: Env, ip: string): Promise<void> {
 
 /** Durum bildirebilmek icin oturumsuz erisilebilen yollar. Hicbiri veri degistirmez. */
 const isPublicPath = (path: string) =>
-  path === '/api/login' || path === '/api/me' || path === '/api/health';
+  path === '/api/login' ||
+  path === '/api/me' ||
+  path === '/api/health' ||
+  path.startsWith('/api/auth/') ||
+  path === '/api/watches' ||
+  /^\/api\/watches\/\d+$/.test(path);
 
 /**
  * ZIYARETCIYE ACIK OKUMA UCLARI.
@@ -245,9 +250,9 @@ api.get('/summary', async (c) => {
               SUM(CASE WHEN fail_count >= 3 THEN 1 ELSE 0 END) AS errors
        FROM products`
     ).first<{ total: number; active: number; errors: number }>(),
-    c.env.DB.prepare('SELECT COUNT(*) AS n FROM notifications WHERE read = 0').first<{ n: number }>(),
+    c.env.DB.prepare('SELECT COUNT(*) AS n FROM notifications WHERE read = 0 AND user_id IS NULL').first<{ n: number }>(),
     c.env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM notifications WHERE kind IN ('drop','target') AND created_at >= ?`
+      `SELECT COUNT(*) AS n FROM notifications WHERE user_id IS NULL AND kind IN ('drop','target') AND created_at >= ?`
     )
       .bind(week)
       .first<{ n: number }>(),
@@ -333,7 +338,7 @@ api.get('/products/:id', async (c) => {
     .bind(id, since)
     .all();
   const notifs = await c.env.DB.prepare(
-    'SELECT * FROM notifications WHERE product_id = ? ORDER BY created_at DESC LIMIT 10'
+    'SELECT * FROM notifications WHERE product_id = ? AND user_id IS NULL ORDER BY created_at DESC LIMIT 10'
   )
     .bind(id)
     .all();
@@ -676,6 +681,7 @@ api.get('/notifications', async (c) => {
   const rows = await c.env.DB.prepare(
     `SELECT n.*, p.title AS product_title, p.url AS product_url
      FROM notifications n LEFT JOIN products p ON p.id = n.product_id
+     WHERE n.user_id IS NULL
      ORDER BY n.created_at DESC LIMIT ?`
   )
     .bind(limit)
@@ -684,17 +690,17 @@ api.get('/notifications', async (c) => {
 });
 
 api.post('/notifications/read-all', async (c) => {
-  await c.env.DB.prepare('UPDATE notifications SET read = 1 WHERE read = 0').run();
+  await c.env.DB.prepare('UPDATE notifications SET read = 1 WHERE read = 0 AND user_id IS NULL').run();
   return c.json({ ok: true });
 });
 
 api.post('/notifications/:id/read', async (c) => {
-  await c.env.DB.prepare('UPDATE notifications SET read = 1 WHERE id = ?').bind(Number(c.req.param('id'))).run();
+  await c.env.DB.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND user_id IS NULL').bind(Number(c.req.param('id'))).run();
   return c.json({ ok: true });
 });
 
 api.delete('/notifications', async (c) => {
-  await c.env.DB.prepare('DELETE FROM notifications').run();
+  await c.env.DB.prepare('DELETE FROM notifications WHERE user_id IS NULL').run();
   return c.json({ ok: true });
 });
 
@@ -940,6 +946,24 @@ api.get('/auth/me', async (c) => {
   const user = await getUserFromSession(c.env, readUserCookie(c));
   if (!user) return c.json({ authed: false });
   return c.json({ authed: true, user: { id: user.id, email: user.email, role: user.role } });
+});
+
+api.get('/auth/notifications', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const rows = await c.env.DB.prepare(
+    `SELECT n.*, p.title AS product_title, p.url AS product_url
+     FROM notifications n LEFT JOIN products p ON p.id = n.product_id
+     WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 100`
+  ).bind(user.id).all();
+  return c.json({ notifications: rows.results ?? [] });
+});
+
+api.post('/auth/notifications/read-all', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  await c.env.DB.prepare('UPDATE notifications SET read = 1 WHERE user_id = ? AND read = 0').bind(user.id).run();
+  return c.json({ ok: true });
 });
 
 // ---- watches (kullanıcı takip listesi) ----

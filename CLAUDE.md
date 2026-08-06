@@ -32,6 +32,12 @@ Frontend'de yönetici oturumu ile kullanıcı hesabı ayrıdır: gizli `/yonetim
 parolalı yönetimi açar; üst çubuktaki **Hesabım** akışı ise `users/sessions` tabanlı
 kayıt, giriş ve çıkışı yönetir (`gfr_u` çerezi).
 
+Kullanıcılar ürün kartından kendi `watches` listelerine ürün ekleyip çıkarır. Watch
+eşikleri her fiyat güncellemesinde değerlendirilir; kişisel bildirimler
+`notifications.user_id/watch_id` ile operasyon bildirimlerinden ayrılır ve Hesabım
+ekranında gösterilir. Kullanıcıya özel kanal bilgisi henüz olmadığı için bu bildirimler
+uygulama içidir; global yönetici Telegram sohbetine gönderilmez.
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık

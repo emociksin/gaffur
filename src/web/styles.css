@@ -680,6 +680,86 @@ input:focus {
   border-color: var(--acc);
 }
 
+.watch-btn {
+  align-self: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--card2);
+  color: var(--mut);
+  padding: 5px 9px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.watch-btn.on {
+  color: var(--green);
+  border-color: #3E7A5066;
+  background: var(--green-dim);
+}
+.account-watches {
+  width: 100%;
+  max-height: 240px;
+  overflow: auto;
+  display: grid;
+  gap: 7px;
+}
+.account-watch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  text-align: left;
+  font-size: 0.76rem;
+}
+.account-watch span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-watch button {
+  border: 0;
+  background: transparent;
+  color: var(--red);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+.account-notifications {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  text-align: left;
+}
+.account-notifications-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+.account-notifications-head button {
+  border: 0;
+  background: transparent;
+  color: var(--acc-deep);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+.account-notification {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border-left: 2px solid var(--line);
+  background: var(--card2);
+  font-size: 0.72rem;
+}
+.account-notification.unread {
+  border-left-color: var(--acc);
+}
+.account-notification span {
+  color: var(--mut);
+}
+
 /* ---------- bos durum ---------- */
 .empty {
   display: flex;

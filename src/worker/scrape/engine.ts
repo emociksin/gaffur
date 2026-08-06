@@ -149,7 +149,7 @@ const NOTIF_COOLDOWN_S = 6 * 3600;
 async function isDuplicate(env: Env, productId: number, kind: string, t: number): Promise<boolean> {
   const since = t - NOTIF_COOLDOWN_S;
   const row = await env.DB.prepare(
-    'SELECT 1 FROM notifications WHERE product_id = ? AND kind = ? AND created_at >= ? LIMIT 1'
+    'SELECT 1 FROM notifications WHERE product_id = ? AND user_id IS NULL AND kind = ? AND created_at >= ? LIMIT 1'
   )
     .bind(productId, kind, since)
     .first();
@@ -181,6 +181,70 @@ async function notify(
     new_price: newPrice,
     sent_telegram: sent,
   });
+}
+
+interface ActiveWatch {
+  id: number;
+  user_id: number;
+  target_price: number | null;
+  alert_mode: string;
+  threshold_pct: number;
+}
+
+async function notifyWatches(
+  env: Env,
+  p: Product,
+  oldPrice: number | null,
+  price: number,
+  stockChanged: boolean,
+  backInStock: boolean,
+  t: number
+): Promise<boolean> {
+  const rows = await env.DB.prepare(
+    `SELECT id, user_id, target_price, alert_mode, threshold_pct
+     FROM watches WHERE product_id = ? AND active = 1 AND user_id IS NOT NULL`
+  ).bind(p.id).all<ActiveWatch>();
+  let emitted = false;
+  for (const watch of rows.results ?? []) {
+    if (watch.alert_mode === 'off') continue;
+    let kind: 'target' | 'drop' | 'stock' | null = null;
+    let title = '';
+
+    if (stockChanged && backInStock) {
+      kind = 'stock';
+      title = 'Takip ettiğin ürün tekrar stokta';
+    } else if (oldPrice != null && watch.target_price != null && price <= watch.target_price && oldPrice > watch.target_price) {
+      kind = 'target';
+      title = 'Takip ettiğin ürün hedef fiyata indi';
+    } else if (
+      oldPrice != null &&
+      price < oldPrice &&
+      (watch.alert_mode === 'drop' || watch.alert_mode === 'any') &&
+      pctDrop(oldPrice, price) >= (watch.threshold_pct || 0)
+    ) {
+      kind = 'drop';
+      title = `Takip ettiğin ürünün fiyatı düştü (%${pctDrop(oldPrice, price).toFixed(1)})`;
+    }
+    if (!kind) continue;
+
+    const duplicate = await env.DB.prepare(
+      'SELECT 1 FROM notifications WHERE watch_id = ? AND kind = ? AND created_at >= ? LIMIT 1'
+    ).bind(watch.id, kind, t - NOTIF_COOLDOWN_S).first();
+    if (duplicate) continue;
+
+    await insertNotification(env, {
+      user_id: watch.user_id,
+      watch_id: watch.id,
+      product_id: p.id,
+      kind,
+      title,
+      body: p.title,
+      old_price: oldPrice,
+      new_price: price,
+    });
+    emitted = true;
+  }
+  return emitted;
 }
 
 /**
@@ -319,6 +383,9 @@ export async function applyPriceUpdate(
       }
     }
   }
+
+  const stockChanged = r.inStock != null && p.in_stock != null && (r.inStock ? 1 : 0) !== p.in_stock;
+  if (await notifyWatches(env, p, oldPrice, price, stockChanged, r.inStock === true, t)) notified = true;
 
   return { ok: true, price, changed, notified };
 }

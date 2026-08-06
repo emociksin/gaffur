@@ -47,6 +47,8 @@ export async function dueProducts(env: Env, limit: number, t: number): Promise<P
 }
 
 export interface NotifInput {
+  user_id?: number | null;
+  watch_id?: number | null;
   product_id?: number | null;
   kind: string;
   title: string;
@@ -98,10 +100,12 @@ export async function writeOfferSnapshot(
 
 export async function insertNotification(env: Env, n: NotifInput): Promise<void> {
   await env.DB.prepare(
-    `INSERT INTO notifications (product_id, kind, title, body, old_price, new_price, sent_telegram, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO notifications (user_id, watch_id, product_id, kind, title, body, old_price, new_price, sent_telegram, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
+      n.user_id ?? null,
+      n.watch_id ?? null,
       n.product_id ?? null,
       n.kind,
       n.title,

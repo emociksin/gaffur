@@ -74,8 +74,8 @@ scripts/             Canlı test harness'ları, backfill script'leri
 ## Sıradaki İş — Faz 2 Kalan + Faz 3
 
 ### Faz 2 Kalan (küçük)
-- [x] Frontend: kullanıcı kayıt/giriş UI'ı (Hesabım modalı, KVKK onaylı kayıt, giriş/çıkış)
-- [ ] Watches'ı bildirim zincirine bağlama (şu an bildirimler eski products alanlarını kullanıyor)
+- [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
+- [x] Watches'ı bildirim zincirine bağlama (kullanıcı bazlı uygulama içi hedef/düşüş/stok bildirimleri)
 - [ ] **K4c Spike (~30 dk):** Crawlee'nin Trendyol bot korumasını aşıp aşamadığını test et
 
 ### Faz 3 — Crawlee Tarama Altyapısı

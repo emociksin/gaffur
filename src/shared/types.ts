@@ -53,6 +53,8 @@ export interface HistoryPoint {
 
 export interface Notification {
   id: number;
+  user_id?: number | null;
+  watch_id?: number | null;
   product_id: number | null;
   kind: 'drop' | 'rise' | 'target' | 'stock' | 'new_product' | 'error' | 'info';
   title: string;
@@ -64,6 +66,23 @@ export interface Notification {
   created_at: number;
   product_title?: string;
   product_url?: string;
+}
+
+export interface Watch {
+  id: number;
+  user_id: number;
+  product_id: number;
+  target_price: number | null;
+  alert_mode: AlertMode;
+  threshold_pct: number;
+  active: number;
+  created_at: number;
+  title: string;
+  site: string;
+  current_price: number | null;
+  currency: string;
+  in_stock: number | null;
+  image: string | null;
 }
 
 export interface AppSettings {

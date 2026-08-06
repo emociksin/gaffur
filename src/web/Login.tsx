@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type UserAccount } from './api';
+import type { Notification, Watch } from '../shared/types';
+import { money } from './format';
 import { BrandSign, Spinner } from './ui';
 
 export function Login({
@@ -14,7 +16,6 @@ export function Login({
   const [pw, setPw] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-
   // Sunucuda parola tanimli degilse giris denemek anlamsiz (503 doner);
   // ne yapilmasi gerektigi anlatilir.
   if (!configured) return <SetupNotice onCancel={onCancel} />;
@@ -102,10 +103,14 @@ export function AccountModal({
   user,
   onClose,
   onChanged,
+  watches,
+  onWatchesChanged,
 }: {
   user: UserAccount | null;
   onClose: () => void;
   onChanged: (user: UserAccount | null) => void;
+  watches: Watch[];
+  onWatchesChanged: () => Promise<void>;
 }) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
@@ -113,6 +118,23 @@ export function AccountModal({
   const [consent, setConsent] = useState(false);
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const loadNotifications = async () => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
+    try {
+      setNotifications((await api.userNotifications()).notifications);
+    } catch {
+      setNotifications([]);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, [user]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,6 +166,19 @@ export function AccountModal({
     }
   };
 
+  const removeWatch = async (id: number) => {
+    setBusy(true);
+    setErr('');
+    try {
+      await api.deleteWatch(id);
+      await onWatchesChanged();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Takip silinemedi');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="login-card account-card" role="dialog" aria-modal="true" aria-label="Kullanıcı hesabı">
@@ -153,7 +188,34 @@ export function AccountModal({
           <>
             <p className="login-sub">Hesabın açık</p>
             <div className="account-email">{user.email}</div>
-            <p className="mut small">Takip ettiğin ürünleri bu hesapla yöneteceksin.</p>
+            <p className="mut small">Takip listen ({watches.length})</p>
+            <div className="account-watches">
+              {watches.length === 0 ? (
+                <p className="mut small">Henüz bir ürün takip etmiyorsun.</p>
+              ) : watches.map((watch) => (
+                <div className="account-watch" key={watch.id}>
+                  <span>{watch.title}</span>
+                  <b>{money(watch.current_price, watch.currency)}</b>
+                  <button type="button" onClick={() => removeWatch(watch.id)} disabled={busy}>Çıkar</button>
+                </div>
+              ))}
+            </div>
+            {notifications.length > 0 && (
+              <div className="account-notifications">
+                <div className="account-notifications-head">
+                  <b>Bildirimlerin</b>
+                  {notifications.some((n) => !n.read) && (
+                    <button type="button" onClick={async () => { await api.readUserNotifications(); await loadNotifications(); }}>Okundu say</button>
+                  )}
+                </div>
+                {notifications.slice(0, 5).map((n) => (
+                  <div className={`account-notification ${n.read ? '' : 'unread'}`} key={n.id}>
+                    <b>{n.title}</b>
+                    <span>{n.product_title ?? n.body}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {err && <div className="login-err">{err}</div>}
             <button className="btn btn-ghost btn-block" onClick={logout} disabled={busy}>
               {busy ? <Spinner size={15} /> : 'Çıkış yap'}

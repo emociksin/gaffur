@@ -10,15 +10,20 @@ export function ProductCard({
   cat,
   onOpen,
   refresh,
+  watched,
+  onToggleWatch,
 }: {
   p: Product;
   cat?: Category;
   onOpen: () => void;
   refresh: () => Promise<void>;
+  watched: boolean;
+  onToggleWatch: (productId: number) => Promise<void>;
 }) {
   const toast = useToast();
   const isAdmin = useIsAdmin();
   const [checking, setChecking] = useState(false);
+  const [watching, setWatching] = useState(false);
   const chg = changePct(p);
   const isErr = p.fail_count >= 3;
   const atMin = p.current_price != null && p.min_price != null && p.current_price <= p.min_price + 0.001;
@@ -44,6 +49,16 @@ export function ProductCard({
       toast(e?.message ?? 'Kontrol başarısız', 'err');
     } finally {
       setChecking(false);
+    }
+  };
+
+  const toggleWatch = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWatching(true);
+    try {
+      await onToggleWatch(p.id);
+    } finally {
+      setWatching(false);
     }
   };
 
@@ -105,6 +120,10 @@ export function ProductCard({
           <span className="meta-time">{timeAgo(p.last_checked_at)}</span>
         </div>
       </div>
+
+      <button className={`watch-btn ${watched ? 'on' : ''}`} onClick={toggleWatch} disabled={watching}>
+        {watching ? <Spinner size={13} /> : watched ? 'Takipten çıkar' : 'Takibe al'}
+      </button>
 
       {isAdmin && (
         <button className="card-check" onClick={quickCheck} disabled={checking} title="Şimdi kontrol et">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Category, Product, Summary } from '../shared/types';
+import type { Category, Product, Summary, Watch } from '../shared/types';
 import { api, type UserAccount } from './api';
 import { AccountModal, Login } from './Login';
 import { Dashboard } from './pages/Dashboard';
@@ -31,6 +31,7 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [showAccount, setShowAccount] = useState(false);
+  const [watches, setWatches] = useState<Watch[]>([]);
   // Yonetim gizli bir adreste: /yonetim. Ana sayfada giris duğmesi YOK —
   // ziyaretcinin isine yaramaz, sadece "burada bir panel var" diye bagirir.
   const [showLogin, setShowLogin] = useState(() => window.location.pathname === '/yonetim');
@@ -62,6 +63,42 @@ export default function App() {
     window.addEventListener('gfr-unauthorized', onUnauth);
     return () => window.removeEventListener('gfr-unauthorized', onUnauth);
   }, [refresh]);
+
+  const refreshWatches = useCallback(async () => {
+    if (!user) {
+      setWatches([]);
+      return;
+    }
+    try {
+      setWatches((await api.watches()).watches);
+    } catch {
+      setWatches([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshWatches();
+  }, [refreshWatches]);
+
+  const toggleWatch = useCallback(async (productId: number) => {
+    if (!user) {
+      setShowAccount(true);
+      return;
+    }
+    try {
+      const existing = watches.find((w) => w.product_id === productId);
+      if (existing) {
+        await api.deleteWatch(existing.id);
+        toast('Ürün takip listenden çıkarıldı', 'ok');
+      } else {
+        await api.addWatch(productId);
+        toast('Ürün takip listene eklendi', 'ok');
+      }
+      await refreshWatches();
+    } catch (e: any) {
+      toast(e?.message ?? 'Takip listesi güncellenemedi', 'err');
+    }
+  }, [refreshWatches, toast, user, watches]);
 
   // arka plan tazeleme (ziyaretci icin de calisir; okuma uclari acik)
   useEffect(() => {
@@ -180,6 +217,8 @@ export default function App() {
             onOpenDetail={setDetailId}
             onAdd={() => setShowAdd(true)}
             refresh={refresh}
+            watchedProductIds={new Set(watches.map((w) => w.product_id))}
+            onToggleWatch={toggleWatch}
           />
         )}
         {activeTab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
@@ -205,7 +244,13 @@ export default function App() {
         />
       )}
       {showAccount && (
-        <AccountModal user={user} onClose={() => setShowAccount(false)} onChanged={setUser} />
+        <AccountModal
+          user={user}
+          watches={watches}
+          onClose={() => setShowAccount(false)}
+          onChanged={setUser}
+          onWatchesChanged={refreshWatches}
+        />
       )}
 
       <footer className="ftr">

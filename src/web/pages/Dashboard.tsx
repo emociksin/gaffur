@@ -14,6 +14,8 @@ export function Dashboard({
   onOpenDetail,
   onAdd,
   refresh,
+  watchedProductIds,
+  onToggleWatch,
 }: {
   products: Product[] | null;
   cats: Category[];
@@ -21,6 +23,8 @@ export function Dashboard({
   onOpenDetail: (id: number) => void;
   onAdd: () => void;
   refresh: () => Promise<void>;
+  watchedProductIds: Set<number>;
+  onToggleWatch: (productId: number) => Promise<void>;
 }) {
   const toast = useToast();
   const isAdmin = useIsAdmin();
@@ -201,7 +205,15 @@ export function Dashboard({
       ) : (
         <div className="grid">
           {filtered.map((p) => (
-            <ProductCard key={p.id} p={p} cat={cats.find((c) => c.id === p.category_id)} onOpen={() => onOpenDetail(p.id)} refresh={refresh} />
+            <ProductCard
+              key={p.id}
+              p={p}
+              cat={cats.find((c) => c.id === p.category_id)}
+              onOpen={() => onOpenDetail(p.id)}
+              refresh={refresh}
+              watched={watchedProductIds.has(p.id)}
+              onToggleWatch={onToggleWatch}
+            />
           ))}
         </div>
       )}
