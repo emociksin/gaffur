@@ -1,12 +1,14 @@
 // Kontrol hatti: direct → Crawlee → Firecrawl (gecici fallback) → parser → fiyat/bildirim
 import type { Env } from '../env';
 import type { AppSettings, Engine, Product, ScrapeResult } from '../../shared/types';
-import { canonicalUrl, detectSite, discoverTrendyol, extractForSite } from './sites';
+import { canonicalUrl, detectSite, discoverTrendyol } from './sites';
 import { fmtMoney } from './price';
 import { ensureOffer, getSettings, insertNotification, now, writeOfferSnapshot } from '../db';
 import { escTg, sendTelegram, tgLink } from '../telegram';
 import { readCapped, safeFetch, SsrfError } from './ssrf';
 import { crawleeFetch } from './crawlee';
+import { parseWithRegistry, TRENDYOL_LISTING_PARSER_VERSION } from './registry';
+import { recordParserOutcome } from './parser-health';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -62,16 +64,20 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
   const base: ScrapeResult = { ok: false, url, site };
   let directNote = '';
   let blocked = false;
+  let lastParserVersion: string | undefined;
 
   if (engine !== 'firecrawl') {
     try {
       const { status, html } = await directFetch(url);
-      const ext = extractForSite(site, html);
+      const parsed = parseWithRegistry(site, html);
+      const ext = parsed.data;
+      lastParserVersion = parsed.parserVersion;
       if (!(ext as any).blocked && status < 400 && ext.price != null) {
         return {
           ...base,
           ok: true,
           engine: 'direct',
+          parserVersion: parsed.parserVersion,
           title: ext.title,
           image: ext.image,
           price: ext.price,
@@ -84,7 +90,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
       directNote = blocked ? 'bot koruması' : status >= 400 ? `HTTP ${status}` : 'fiyat bulunamadı';
       if (!blocked && ext.title && engine === 'direct') {
         // sayfa acildi ama fiyat yok — kullaniciya net soyle
-        return { ...base, title: ext.title, error: 'Sayfa açıldı ama fiyat bulunamadı' };
+        return { ...base, title: ext.title, parserVersion: parsed.parserVersion, error: 'Sayfa açıldı ama fiyat bulunamadı' };
       }
     } catch (e: any) {
       // SSRF ihlali: URL guvensiz. Firecrawl'a (harici servise) iletme, hemen reddet.
@@ -99,12 +105,15 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
   if (engine === 'auto' && (blocked || directNote)) {
     try {
       const { status, html } = await crawleeFetch(url, FETCH_HEADERS);
-      const ext = extractForSite(site, html);
+      const parsed = parseWithRegistry(site, html);
+      const ext = parsed.data;
+      lastParserVersion = parsed.parserVersion;
       if (!(ext as any).blocked && status < 400 && ext.price != null) {
         return {
           ...base,
           ok: true,
           engine: 'crawlee',
+          parserVersion: parsed.parserVersion,
           title: ext.title,
           image: ext.image,
           price: ext.price,
@@ -123,12 +132,15 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
   if (engine !== 'direct' && fcKey) {
     try {
       const html = await firecrawlScrape(fcKey, url);
-      const ext = extractForSite(site, html);
+      const parsed = parseWithRegistry(site, html);
+      const ext = parsed.data;
+      lastParserVersion = parsed.parserVersion;
       if (ext.price != null) {
         return {
           ...base,
           ok: true,
           engine: 'firecrawl',
+          parserVersion: parsed.parserVersion,
           title: ext.title,
           image: ext.image,
           price: ext.price,
@@ -137,7 +149,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
           inStock: ext.inStock,
         };
       }
-      return { ...base, title: ext.title, error: 'Firecrawl sayfayı getirdi ama fiyat çözülemedi' };
+      return { ...base, title: ext.title, parserVersion: parsed.parserVersion, error: 'Firecrawl sayfayı getirdi ama fiyat çözülemedi' };
     } catch (e: any) {
       return { ...base, error: `Firecrawl hatası: ${String(e?.message ?? e).slice(0, 160)}` };
     }
@@ -147,7 +159,7 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
     !fcKey && blocked && engine !== 'direct'
       ? ' — Ayarlar bölümünden Firecrawl anahtarı eklersen bu site de çekilebilir'
       : '';
-  return { ...base, error: `Siteye doğrudan erişilemedi (${directNote})${hint}` };
+  return { ...base, parserVersion: lastParserVersion, error: `Siteye doğrudan erişilemedi (${directNote})${hint}` };
 }
 
 // ---- fiyat guncelleme + alarm ----
@@ -285,7 +297,7 @@ export async function applyPriceUpdate(
   env: Env,
   settings: AppSettings,
   p: Product,
-  r: { price: number; listPrice?: number | null; inStock?: boolean | null; engine: string; title?: string; image?: string },
+  r: { price: number; listPrice?: number | null; inStock?: boolean | null; engine: string; parserVersion?: string; title?: string; image?: string },
   t: number
 ): Promise<CheckOutcome> {
   const oldPrice = p.current_price;
@@ -341,6 +353,7 @@ export async function applyPriceUpdate(
       currency: p.currency ?? 'TRY',
       stockStatus: newStock == null ? 'unknown' : (stockMap[newStock] ?? 'unknown'),
       engine: r.engine,
+      parserVersion: r.parserVersion,
     }, t);
   } catch { /* offer tablosu yoksa (eski DB) sessizce atla */ }
 
@@ -425,6 +438,7 @@ export async function checkProduct(env: Env, p: Product, settings?: AppSettings)
   const s = settings ?? (await getSettings(env));
   const t = now();
   const r = await scrapeUrl(p.url, p.engine, s.firecrawl_key || undefined);
+  if (r.parserVersion) await recordParserOutcome(env, r.site, r.parserVersion, r.ok && r.price != null, t);
 
   if (!r.ok || r.price == null) {
     const failCount = (p.fail_count ?? 0) + 1;
@@ -456,6 +470,7 @@ export async function checkProduct(env: Env, p: Product, settings?: AppSettings)
       listPrice: r.listPrice ?? null,
       inStock: r.inStock ?? null,
       engine: r.engine ?? 'direct',
+      parserVersion: r.parserVersion,
       title: r.title,
       image: r.image,
     },
@@ -507,6 +522,7 @@ export async function refreshListing(
   }
 
   const items = discoverTrendyol(html, maxNew);
+  await recordParserOutcome(env, 'trendyol-listing', TRENDYOL_LISTING_PARSER_VERSION, items.length > 0, t);
   if (!items.length) {
     await env.DB.prepare('UPDATE categories SET last_discovered_at = ? WHERE id = ?').bind(t, category.id).run();
     return { ok: false, found: 0, added: 0, updated: 0, error: 'Listede ürün bulunamadı (sayfa yapısı değişmiş olabilir)' };

@@ -503,6 +503,7 @@ api.post('/products', async (c) => {
         currency: r.currency ?? 'TRY',
         stockStatus: r.inStock == null ? 'unknown' : r.inStock ? 'in_stock' : 'out_of_stock',
         engine: r.engine,
+        parserVersion: r.parserVersion,
       }, t);
     }
   } catch { /* offer tablosu yoksa sessizce atla */ }

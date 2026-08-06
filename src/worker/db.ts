@@ -81,12 +81,12 @@ export async function ensureOffer(
 export async function writeOfferSnapshot(
   env: Env,
   offerId: number,
-  data: { price: number; listPrice?: number | null; currency?: string; stockStatus?: string; engine?: string },
+  data: { price: number; listPrice?: number | null; currency?: string; stockStatus?: string; engine?: string; parserVersion?: string },
   t: number
 ): Promise<void> {
   await env.DB.prepare(
-    `INSERT INTO offer_snapshots (offer_id, price, list_price, currency, stock_status, engine, checked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO offer_snapshots (offer_id, price, list_price, currency, stock_status, engine, parser_version, checked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     offerId,
     data.price,
@@ -94,8 +94,11 @@ export async function writeOfferSnapshot(
     data.currency ?? 'TRY',
     data.stockStatus ?? 'unknown',
     data.engine ?? null,
+    data.parserVersion ?? null,
     t
   ).run();
+  await env.DB.prepare('UPDATE offers SET parser_version = ?, last_seen_at = ? WHERE id = ?')
+    .bind(data.parserVersion ?? null, t, offerId).run();
 }
 
 export async function insertNotification(env: Env, n: NotifInput): Promise<void> {

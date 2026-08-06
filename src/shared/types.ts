@@ -105,6 +105,7 @@ export interface ScrapeResult {
   currency?: string;
   inStock?: boolean;
   engine?: string;
+  parserVersion?: string;
   error?: string;
 }
 

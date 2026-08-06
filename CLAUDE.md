@@ -22,6 +22,8 @@ src/worker/          Cloudflare Worker (Hono API + cron)
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
   scrape/
     crawlee.ts       CheerioCrawler transport; disksiz storage + her redirect'te SSRF doğrulama
+    registry.ts      Site → kararlı parser sürümü dispatch'i
+    parser-health.ts Saatlik başarı/hata sayacı; 10 örnek ve %50 hatada tek alarm
     price.ts         parsePrice (TR/EN sayı biçimleri), para birimi tespiti
     parse.ts         Genel katman: JSON-LD → meta/microdata → gömülü JSON → bağlamsal regex; bracedJson (brace-balance)
     sites.ts         Site tespiti, URL kanonlaştırma, Trendyol/HB/Amazon/N11 adaptörleri, discoverTrendyol (liste keşfi)
