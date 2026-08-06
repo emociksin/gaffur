@@ -14,6 +14,10 @@ import type {
   Watch,
   LandedCostInput,
   LandedCostResult,
+  NotificationPreferences,
+  NotificationChannelConfig,
+  Opportunity,
+  ComplianceAssessment,
 } from '../shared/types';
 
 export class ApiError extends Error {
@@ -30,6 +34,7 @@ export interface UserAccount {
   id: number;
   email: string;
   role: string;
+  email_verified: number;
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -72,6 +77,18 @@ export const api = {
   userLogout: () => req<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
   userNotifications: () => req<{ notifications: Notification[] }>('/auth/notifications'),
   readUserNotifications: () => req<{ ok: boolean }>('/auth/notifications/read-all', { method: 'POST' }),
+  notificationPreferences: () => req<{
+    preferences: NotificationPreferences;
+    email_verified: boolean;
+    channels: NotificationChannelConfig;
+  }>('/auth/notification-preferences'),
+  saveNotificationPreferences: (body: Partial<NotificationPreferences>) =>
+    req<{ ok: boolean }>('/auth/notification-preferences', { method: 'PUT', body: JSON.stringify(body) }),
+  requestEmailVerification: () => req<{ ok: boolean; alreadyVerified?: boolean }>('/auth/email/verification', { method: 'POST' }),
+  addPushSubscription: (subscription: PushSubscriptionJSON) =>
+    req<{ ok: boolean }>('/auth/push-subscriptions', { method: 'POST', body: JSON.stringify(subscription) }),
+  deletePushSubscription: (endpoint: string) =>
+    req<{ ok: boolean }>('/auth/push-subscriptions', { method: 'DELETE', body: JSON.stringify({ endpoint }) }),
   watches: () => req<{ watches: Watch[] }>('/watches'),
   addWatch: (productId: number, targetPrice?: number | null, thresholdPct = 0) =>
     req<{ ok: boolean; watchId: number }>('/watches', {
@@ -81,6 +98,7 @@ export const api = {
   deleteWatch: (id: number) => req<{ ok: boolean }>(`/watches/${id}`, { method: 'DELETE' }),
 
   summary: () => req<Summary>('/summary'),
+  opportunities: () => req<{ opportunities: Opportunity[] }>('/opportunities'),
   products: () => req<{ products: Product[] }>('/products'),
   product: (id: number, days = 90) =>
     req<{
@@ -128,6 +146,9 @@ export const api = {
     ),
 
   notifications: () => req<{ notifications: Notification[] }>('/notifications'),
+  compliance: () => req<{ assessments: ComplianceAssessment[] }>('/compliance'),
+  refreshCompliance: () => req<{ result: { refreshed: boolean; count: number; calculatedAt: number } }>('/compliance/refresh', { method: 'POST' }),
+  refreshOpportunities: () => req<{ result: { refreshed: boolean; count: number; calculatedAt: number } }>('/opportunities/refresh', { method: 'POST' }),
   readAll: () => req<{ ok: boolean }>('/notifications/read-all', { method: 'POST' }),
   readOne: (id: number) => req<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST' }),
   clearNotifications: () => req<{ ok: boolean }>('/notifications', { method: 'DELETE' }),

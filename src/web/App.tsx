@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Category, Product, Summary, Watch } from '../shared/types';
+import type { Category, Opportunity, Product, Summary, Watch } from '../shared/types';
 import { isAdminPathname, publicProductPath } from '../shared/routes';
 import { api, type UserAccount } from './api';
 import { AccountModal, Login } from './Login';
 import { Dashboard } from './pages/Dashboard';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CompliancePage } from './pages/CompliancePage';
 import { AddModal } from './components/AddModal';
 import { DetailModal } from './components/DetailModal';
 import { AdminProvider, BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Spinner, useToast } from './ui';
 
-type Tab = 'panel' | 'bildirim' | 'ayar';
+type Tab = 'panel' | 'bildirim' | 'uyum' | 'ayar';
 
 export default function App() {
   const isAdminPath = isAdminPathname(window.location.pathname);
@@ -30,6 +31,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[] | null>(null);
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [showAccount, setShowAccount] = useState(false);
@@ -43,10 +45,11 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, c, s] = await Promise.all([api.products(), api.categories(), api.summary()]);
+      const [p, c, s, o] = await Promise.all([api.products(), api.categories(), api.summary(), api.opportunities()]);
       setProducts(p.products);
       setCats(c.categories);
       setSummary(s);
+      setOpportunities(o.opportunities);
     } catch {
       /* oturum dusmus olabilir; event zaten yakalanir */
     }
@@ -195,6 +198,9 @@ export default function App() {
               <IconGear size={16} />
               Ayarlar
             </button>
+            <button className={tab === 'uyum' ? 'on' : ''} onClick={() => setTab('uyum')}>
+              Uyum
+            </button>
           </nav>
         ) : (
           <p className="hdr-tagline">Doğrulanmış fiyatı, stoku ve geçmişi tek yerde gör</p>
@@ -224,6 +230,7 @@ export default function App() {
             products={products}
             cats={cats}
             summary={summary}
+            opportunities={opportunities}
             onOpenDetail={openProduct}
             onAdd={() => setShowAdd(true)}
             refresh={refresh}
@@ -232,6 +239,7 @@ export default function App() {
           />
         )}
         {activeTab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
+        {activeTab === 'uyum' && <CompliancePage onOpenProduct={setDetailId} />}
         {activeTab === 'ayar' && <SettingsPage open={auth.open} />}
       </main>
 

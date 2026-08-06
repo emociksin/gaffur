@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 6 Tamamlandı, Faz 7 Sırada
+# Gaffur Handoff — Faz 7 Tamamlandı, Faz 8 Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (84 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost + SSR/SEO), GitHub Actions CI
+- **Test:** Vitest (90 test — önceki paket + Faz 7 kanal kuyruğu, Web Push, fırsat ve uyum), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -72,7 +72,7 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 7
+## Sıradaki İş — Faz 8
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -133,11 +133,24 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 - [x] Aktif/arşiv/kategori sitemapleri, AI bot kuralları, `llms.txt`, `/urun/{slug}.json`
 - [x] `brand`, `gtin`, `mpn`, `sku` çift DB migration ve kontrollü PATCH desteği
 
-### Faz 7 — Bildirim ve Fırsat Katmanı **← sıradaki**
-- [ ] Kullanıcı bazlı e-posta ve web push kanal modeli; tek tık abonelikten çıkma
-- [ ] Anlık / günlük özet tercihleri; mevcut dedup ve cooldown ile kanal dağıtımı
-- [ ] Günlük hesaplanan fırsat akışı; 30 günlük medyan/all-time low referansları
-- [ ] 10 günlük fiyat kuralı için yalnız iç kullanım uyum aracı ve kanıt export'u
+### Faz 7 — Bildirim ve Fırsat Katmanı ✅
+- [x] Kullanıcı bazlı, varsayılan kapalı e-posta ve standart Web Push/VAPID kanal modeli
+- [x] E-posta doğrulama, tarayıcı aboneliği ve tek tık tüm dış kanallardan çıkma
+- [x] Anlık / İstanbul 09.00 günlük özet tercihi; kalıcı teslimat kuyruğu, retry ve mevcut cooldown
+- [x] 30 günlük medyan/all-time low kullanan, stok dışını almayan günlük fırsat snapshot'ı
+- [x] 10 günlük fiyat kuralı için yalnız yönetimde tutarlı/şüpheli/yetersiz sınıflaması ve kanıt CSV
+- [x] 1 Ağustos 2026 yürürlük ve 10 gün kuralı Ticaret Bakanlığı birincil kaynaklarından doğrulandı
+
+Harici kanal operasyon notu: kod ve kuyruk tamamdır; gerçek e-posta/Web Push teslimatı için
+Coolify'da `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` ve
+`VAPID_SUBJECT` tanımlanmalıdır. Anahtar yokken sistem teslimatı “gönderildi” saymaz.
+
+### Faz 8 — Katalog + Ürün Eşleştirme **← sıradaki**
+- [ ] GTIN/EAN/MPN kesin eşleşme ve kod güvenilirlik kontrolü
+- [ ] Türkçe başlık normalizasyonu: marka, model ve varyant eksenleri
+- [ ] Benzerlik + fiyat aralığı güven skoru; düşük güveni insan onay kuyruğuna alma
+- [ ] Match rate ve precision ölçümü (precision hedefi ≥ %98)
+- [ ] Scrapy/Python servis sınırı için ADR ve yalnız arama/eşleştirme hattında spike
 
 ### Faz 7-8 Özet
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
@@ -148,7 +161,7 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 | # | Karar |
 |---|-------|
 | K1 | Halka açık ürün, Postgres + SSR + çok kullanıcılı baştan |
-| K3 | Crawlee + Scrapy (Firecrawl sökülecek) |
+| K3 | Crawlee + Scrapy; Firecrawl söküldü |
 | K4 | Erişilebilen sitelerle başla (Vatan, İncehesap, HB) |
 | K5 | "Tüm satıcılar" iddiası kullanılmayacak, kapsam açıkça gösterilecek |
 | K6 | Uyum rozeti iç araç, public'te sadece veri gösterilir |
@@ -160,7 +173,7 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (84 test)
+npm test           # vitest (90 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```
@@ -170,6 +183,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 - **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
 - **Genel yurtdışı ürünün vergisi GTİP olmadan hesaplanamaz:** UI bilinmeyen vergi/masrafı kesin toplam gibi göstermez
 - **Canonical origin:** Prod'da `PUBLIC_BASE_URL=https://gaffur.net` verilmelidir; verilmezse güvenli varsayılan zaten `https://gaffur.net` olur
+- **Faz 7 dış kanal secret'ları opsiyonel ama gerçek teslimat için gerekli:** yoksa uygulama içi bildirim çalışır, e-posta/Web Push kapalı görünür
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
 

@@ -1,5 +1,6 @@
 import type { Env } from './env';
 import type { AppSettings, Product } from '../shared/types';
+import { queueNotificationDeliveries } from './notifications/delivery';
 
 export const now = () => Math.floor(Date.now() / 1000);
 
@@ -102,8 +103,9 @@ export async function writeOfferSnapshot(
     .bind(data.parserVersion ?? null, t, offerId).run();
 }
 
-export async function insertNotification(env: Env, n: NotifInput): Promise<void> {
-  await env.DB.prepare(
+export async function insertNotification(env: Env, n: NotifInput): Promise<number> {
+  const createdAt = now();
+  const result = await env.DB.prepare(
     `INSERT INTO notifications (user_id, watch_id, product_id, kind, title, body, old_price, new_price, sent_telegram, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
@@ -117,7 +119,12 @@ export async function insertNotification(env: Env, n: NotifInput): Promise<void>
       n.old_price ?? null,
       n.new_price ?? null,
       n.sent_telegram ? 1 : 0,
-      now()
+      createdAt
     )
     .run();
+  const id = Number(result.meta.last_row_id);
+  if (n.user_id != null && id > 0) {
+    await queueNotificationDeliveries(env, id, n.user_id, createdAt);
+  }
+  return id;
 }

@@ -136,7 +136,7 @@ export interface Notification {
   user_id?: number | null;
   watch_id?: number | null;
   product_id: number | null;
-  kind: 'drop' | 'rise' | 'target' | 'stock' | 'new_product' | 'error' | 'info';
+  kind: 'drop' | 'rise' | 'target' | 'stock' | 'all_time_low' | 'new_product' | 'error' | 'info';
   title: string;
   body: string | null;
   old_price: number | null;
@@ -146,6 +146,55 @@ export interface Notification {
   created_at: number;
   product_title?: string;
   product_url?: string;
+}
+
+export interface NotificationPreferences {
+  email_enabled: boolean;
+  web_push_enabled: boolean;
+  delivery_mode: 'instant' | 'daily';
+  unsubscribed: boolean;
+}
+
+export interface NotificationChannelConfig {
+  email: { configured: boolean };
+  web_push: { configured: boolean; publicKey: string | null };
+}
+
+export interface Opportunity {
+  product_id: number;
+  current_price: number;
+  reference_price: number;
+  reference_kind: 'median_30d';
+  drop_pct: number;
+  at_all_time_low: number;
+  stock_status: StockStatus;
+  score: number;
+  calculated_at: number;
+  title: string;
+  image: string | null;
+  currency: string;
+  site: string;
+  category_id: number | null;
+}
+
+export interface ComplianceAssessment {
+  product_id: number;
+  status: 'consistent' | 'suspicious' | 'insufficient_data';
+  advertised_reference: number | null;
+  observed_price: number | null;
+  low_10d_before: number | null;
+  sample_count: number;
+  evidence_start_at: number | null;
+  evidence_end_at: number | null;
+  reason: string;
+  source_title: string;
+  source_url: string;
+  rule_effective_at: number;
+  calculated_at: number;
+  title: string;
+  site: string;
+  url: string;
+  currency: string;
 }
 
 export interface Watch {

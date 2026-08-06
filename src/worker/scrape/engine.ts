@@ -1,4 +1,4 @@
-// Kontrol hatti: direct → Crawlee → Firecrawl (gecici fallback) → parser → fiyat/bildirim
+// Kontrol hatti: direct → Crawlee → parser → fiyat/bildirim
 import type { Env } from '../env';
 import type { AppSettings, Engine, Product, ScrapeResult } from '../../shared/types';
 import { canonicalUrl, detectSite, discoverTrendyol } from './sites';
@@ -204,6 +204,7 @@ async function notifyWatches(
   p: Product,
   oldPrice: number | null,
   referencePrice: number | null,
+  allTimeLow: number | null,
   price: number,
   stockChanged: boolean,
   backInStock: boolean,
@@ -216,7 +217,7 @@ async function notifyWatches(
   let emitted = false;
   for (const watch of rows.results ?? []) {
     if (watch.alert_mode === 'off') continue;
-    let kind: 'target' | 'drop' | 'stock' | null = null;
+    let kind: 'target' | 'drop' | 'stock' | 'all_time_low' | null = null;
     let title = '';
 
     if (stockChanged && backInStock) {
@@ -225,6 +226,14 @@ async function notifyWatches(
     } else if (oldPrice != null && watch.target_price != null && price <= watch.target_price && oldPrice > watch.target_price) {
       kind = 'target';
       title = 'Takip ettiğin ürün hedef fiyata indi';
+    } else if (
+      allTimeLow != null &&
+      price < allTimeLow - 0.01 &&
+      pctDrop(allTimeLow, price) >= 2 &&
+      (watch.alert_mode === 'drop' || watch.alert_mode === 'any')
+    ) {
+      kind = 'all_time_low';
+      title = 'Takip ettiğin ürün tarihî en düşük fiyatında';
     } else if (
       referencePrice != null &&
       price < referencePrice &&
@@ -401,7 +410,17 @@ export async function applyPriceUpdate(
     }
   }
 
-  if (await notifyWatches(env, p, oldPrice, referencePrice, price, stock.transitioned, stock.toStatus === 'in_stock', t)) notified = true;
+  if (await notifyWatches(
+    env,
+    p,
+    oldPrice,
+    referencePrice,
+    baselineBefore.all_time_low,
+    price,
+    stock.transitioned,
+    stock.toStatus === 'in_stock',
+    t
+  )) notified = true;
 
   return { ok: true, price, changed, notified };
 }

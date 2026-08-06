@@ -14,8 +14,12 @@ Docker/Coolify üzerinde çalışır.
   sitesi bu sayede desteklenir).
 - **Kategori takibi:** Trendyol kategori/arama bağlantısı yapıştır → listedeki ürünler
   toplu takibe girer, listeye eklenen yeni ürünler otomatik keşfedilir (6 saatte bir).
-- **Bildirimler:** Fiyat düşüşü, hedef fiyata iniş, stok değişimi, yeni ürün — uygulama
-  içi + Telegram. Ürün başına mod ve % eşiği seçilebilir.
+- **Bildirimler:** Fiyat düşüşü, hedef fiyat, stok dönüşü ve tarihî düşük — uygulama içi,
+  Telegram, doğrulanmış e-posta ve standart Web Push. Anlık veya günlük 09.00 özeti seçilebilir.
+- **Günlük fırsatlar:** Stokta olan ürünleri 30 günlük medyan ve tarihî en düşük referansıyla
+  cron içinde hesaplar; public istek sırasında yeniden hesaplamaz.
+- **İç uyum aracı:** Yönetimde önceki 10 günlük fiyat kanıtını tutarlı/şüpheli/yetersiz olarak
+  inceler ve CSV verir; kamuya hukuki ihlal rozeti yayımlamaz.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
 - **Public ürün sayfaları:** Sunucudan tam HTML, Product/AggregateOffer yapılandırılmış verisi,
   günlük grafik + tablo, kanonik ürün/kategori adresleri ve segmentli sitemapler.
@@ -46,6 +50,11 @@ Docker image'i Coolify ile çalıştır. En az `PASSWORD` ve
 `PUBLIC_BASE_URL=https://gaffur.net`; Postgres kullanılacaksa ayrıca
 `DATABASE_URL=postgres://...` tanımla. Değişiklikler `main` dalına push edilince VPS
 otomatik deploy hattı tetiklenir.
+
+E-posta teslimatı için `RESEND_API_KEY` + `EMAIL_FROM`; Web Push için
+`npm run vapid:generate` çıktısındaki `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` ve
+`VAPID_SUBJECT` değerlerini Coolify ortam değişkenlerine ekle. Bunlar yoksa uygulama içi
+bildirim çalışır fakat dış kanal gönderilmiş sayılmaz.
 
 > **PASSWORD secret'i zorunludur.** Uygulama fail-closed çalışır: secret tanımlı değilse
 > tüm API `503` döner ve arayüz "Kurulum tamamlanmadı" ekranını gösterir — yani secret'ı

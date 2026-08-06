@@ -11,11 +11,12 @@
     "build:node": "esbuild src/server/index.ts --bundle --platform=node --target=node24 --format=esm --outfile=dist/server/index.mjs --packages=external",
     "start:node": "node dist/server/index.mjs",
     "test": "vitest run",
-    "probe": "tsx scripts/probe.ts"
+    "probe": "tsx scripts/probe.ts",
+    "vapid:generate": "tsx scripts/generate-vapid.ts"
   },
   "dependencies": {
     "@crawlee/cheerio": "^3.18.0",
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^2.1.0",
     "hono": "^4.12.34",
     "postgres": "^3.4.9",
     "react": "^19.0.0",

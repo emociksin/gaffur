@@ -9,6 +9,15 @@ import { checkProduct, crawleeScrape, directFetch, refreshListing, scrapeUrl } f
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
 import { detectChatId, sendTelegram } from './telegram';
 import { calculateLandedCost, type LandedCostInput } from './intelligence/landed-cost';
+import { refreshOpportunityFeed } from './intelligence/opportunities';
+import { refreshComplianceAssessments } from './intelligence/compliance';
+import {
+  ensureNotificationPreferences,
+  randomToken,
+  unsubscribeExternalNotifications,
+} from './notifications/delivery';
+import { emailConfigured, escapeHtml, sendEmail } from './notifications/email';
+import { isAllowedPushEndpoint, webPushPublicConfig } from './notifications/web-push';
 
 const api = new Hono<{ Bindings: Env }>();
 
@@ -68,6 +77,8 @@ const isPublicPath = (path: string) =>
   path === '/api/me' ||
   path === '/api/health' ||
   path.startsWith('/api/auth/') ||
+  path.startsWith('/api/unsubscribe/') ||
+  path.startsWith('/api/verify-email/') ||
   path === '/api/watches' ||
   /^\/api\/watches\/\d+$/.test(path);
 
@@ -78,16 +89,17 @@ const isPublicPath = (path: string) =>
  * gizli bilgi tasimayan GET'ler girer.
  *
  * Bilerek DISARIDA birakilanlar:
- *   /settings        -> Telegram token'i ve Firecrawl anahtari
+ *   /settings        -> Telegram token'i ve yonetim ayarlari
  *   /notifications   -> operasyon gurultusu
  *   /export/*.csv    -> toplu veri disari aktarimi
- *   /preview, /check-all, /cron/run -> dis istek + kredi harcatir
+ *   /preview, /check-all, /cron/run -> dis istek ve sunucu kaynagi harcatir
  */
 const PUBLIC_READS: RegExp[] = [
   /^\/api\/summary$/,
   /^\/api\/products$/,
   /^\/api\/products\/\d+$/,
   /^\/api\/categories$/,
+  /^\/api\/opportunities$/,
   /^\/api\/offers\/\d+\/logistics$/,
   /^\/api\/tax-rules$/,
 ];
@@ -96,13 +108,11 @@ const isPublicRead = (method: string, path: string) =>
 
 /**
  * ZIYARETCININ YAPABILDIGI YAZMA ISLEMLERI.
- * Site herkesin kullandigi bir arac: gelen kisi urun linkini yapistirip takibe
- * alabilir. Ikisi de disariya istek attigi (ve Firecrawl kredisi harcayabildigi)
- * icin IP basina ve toplamda hiz siniriyla korunur.
- * Silme, duzenleme, ayarlar ve bildirimler ziyaretciye KAPALI kalir.
+ * Urun ekleme ve onizleme Faz 6'daki vitrin/yonetim ayrimiyla yalniz yoneticiye
+ * aittir. Ziyaretci sadece salt hesap motorunu kullanabilir; kayitli veriyi degistirmez.
  */
 const isPublicWrite = (method: string, path: string) =>
-  method === 'POST' && (path === '/api/products' || path === '/api/preview' || path === '/api/landed-cost/calculate');
+  method === 'POST' && path === '/api/landed-cost/calculate';
 
 // ---- ziyaretci hiz siniri ----
 const ADD_PER_IP = 10; // saatte, IP basina eklenebilecek urun
@@ -305,6 +315,20 @@ api.get('/summary', async (c) => {
     lastCheckAt: lastCheck?.t ?? null,
     topDrops,
   });
+});
+
+// Gunluk cron tarafindan hesaplanmis firsat snapshot'i; bu GET agir hesap yapmaz.
+api.get('/opportunities', async (c) => {
+  const limit = Math.max(1, Math.min(50, Number(c.req.query('limit') ?? 12)));
+  const rows = await c.env.DB.prepare(
+    `SELECT f.*, p.title, p.image, p.currency, p.site, p.category_id
+     FROM opportunity_feed f
+     JOIN products p ON p.id = f.product_id
+     WHERE p.active = 1
+     ORDER BY f.score DESC, f.drop_pct DESC, p.title ASC
+     LIMIT ?`
+  ).bind(limit).all();
+  return c.json({ opportunities: rows.results ?? [] });
 });
 
 // ---- urunler ----
@@ -1066,6 +1090,99 @@ api.get('/export/history.csv', async (c) => {
   });
 });
 
+// ---- Faz 7: yalniz yoneticiye acik 10 gun kurali inceleme araci ----
+api.get('/compliance', async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT a.*, p.title, p.site, p.url, p.currency
+     FROM compliance_assessments a
+     JOIN products p ON p.id = a.product_id
+     ORDER BY CASE a.status WHEN 'suspicious' THEN 0 WHEN 'insufficient_data' THEN 1 ELSE 2 END,
+              a.calculated_at DESC, p.title ASC`
+  ).all();
+  return c.json({ assessments: rows.results ?? [] });
+});
+
+api.post('/compliance/refresh', async (c) => {
+  return c.json({ result: await refreshComplianceAssessments(c.env, now()) });
+});
+
+api.post('/opportunities/refresh', async (c) => {
+  return c.json({ result: await refreshOpportunityFeed(c.env, now()) });
+});
+
+api.get('/export/compliance.csv', async (c) => {
+  const rows = await c.env.DB.prepare(
+    `SELECT a.*, p.title, p.site, p.url
+     FROM compliance_assessments a JOIN products p ON p.id = a.product_id
+     ORDER BY a.status, p.title`
+  ).all<any>();
+  const head = 'urun_id;urun;site;durum;gosterilen_referans;gozlenen_fiyat;onceki_10_gun_en_dusuk;ornek_sayisi;kanit_baslangic;kanit_bitis;aciklama;kaynak';
+  const lines = (rows.results ?? []).map((row: any) => [
+    row.product_id,
+    csvEsc(row.title),
+    csvEsc(row.site),
+    row.status,
+    row.advertised_reference ?? '',
+    row.observed_price ?? '',
+    row.low_10d_before ?? '',
+    row.sample_count,
+    row.evidence_start_at ? new Date(row.evidence_start_at * 1000).toISOString() : '',
+    row.evidence_end_at ? new Date(row.evidence_end_at * 1000).toISOString() : '',
+    csvEsc(row.reason),
+    csvEsc(row.source_url),
+  ].join(';'));
+  return new Response('﻿' + [head, ...lines].join('\r\n'), {
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': 'attachment; filename="gaffur-10-gun-uyum-incelemesi.csv"',
+    },
+  });
+});
+
+api.get('/export/evidence/:id.csv', async (c) => {
+  const productId = Number(c.req.param('id'));
+  const product = await c.env.DB.prepare(
+    `SELECT p.*, a.status AS assessment_status, a.reason AS assessment_reason,
+            a.low_10d_before, a.evidence_start_at, a.evidence_end_at,
+            a.source_title, a.source_url, a.rule_effective_at
+     FROM products p LEFT JOIN compliance_assessments a ON a.product_id = p.id
+     WHERE p.id = ?`
+  ).bind(productId).first<any>();
+  if (!product) return c.json({ error: 'Ürün bulunamadı' }, 404);
+  const history = await c.env.DB.prepare(
+    `SELECT price, list_price, in_stock, checked_at FROM price_history
+     WHERE product_id = ? ORDER BY checked_at ASC`
+  ).bind(productId).all<any>();
+  const meta = [
+    ['alan', 'deger'],
+    ['urun_id', product.id],
+    ['urun', csvEsc(product.title)],
+    ['site', csvEsc(product.site)],
+    ['url', csvEsc(product.url)],
+    ['inceleme_durumu', product.assessment_status ?? 'hesaplanmadi'],
+    ['aciklama', csvEsc(product.assessment_reason ?? '')],
+    ['onceki_10_gun_en_dusuk', product.low_10d_before ?? ''],
+    ['kanit_baslangic', product.evidence_start_at ? new Date(product.evidence_start_at * 1000).toISOString() : ''],
+    ['kanit_bitis', product.evidence_end_at ? new Date(product.evidence_end_at * 1000).toISOString() : ''],
+    ['kural_yururluk', product.rule_effective_at ? new Date(product.rule_effective_at * 1000).toISOString() : ''],
+    ['kaynak', csvEsc(product.source_url ?? '')],
+    ['', ''],
+    ['tarih', 'fiyat', 'liste_fiyati', 'stok'],
+  ].map((row) => row.join(';'));
+  const points = (history.results ?? []).map((row: any) => [
+    new Date(row.checked_at * 1000).toISOString(),
+    row.price,
+    row.list_price ?? '',
+    row.in_stock == null ? '' : row.in_stock ? 'var' : 'yok',
+  ].join(';'));
+  return new Response('﻿' + [...meta, ...points].join('\r\n'), {
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="gaffur-kanit-${productId}.csv"`,
+    },
+  });
+});
+
 // ---- kullanıcı hesap sistemi (Faz 2) ----
 
 const USER_SESSION_COOKIE = 'gfr_u';
@@ -1074,14 +1191,53 @@ const userCookieName = (c: { req: { url: string } }) => (isHttps(c) ? USER_SESSI
 const readUserCookie = (c: Parameters<typeof getCookie>[0]) =>
   getCookie(c, USER_SESSION_COOKIE_HOST) ?? getCookie(c, USER_SESSION_COOKIE);
 
-async function getUserFromSession(env: Env, cookie: string | undefined | null): Promise<{ id: number; email: string; role: string } | null> {
+async function getUserFromSession(env: Env, cookie: string | undefined | null): Promise<{ id: number; email: string; role: string; email_verified: number } | null> {
   if (!cookie) return null;
   const t = now();
   const row = await env.DB.prepare(
-    'SELECT u.id, u.email, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?'
-  ).bind(cookie, t).first<{ id: number; email: string; role: string }>();
+    'SELECT u.id, u.email, u.role, u.email_verified FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?'
+  ).bind(cookie, t).first<{ id: number; email: string; role: string; email_verified: number }>();
   return row ?? null;
 }
+
+function accountStatusHtml(title: string, message: string): string {
+  return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+    <title>${escapeHtml(title)} — Gaffur</title></head>
+    <body style="margin:0;background:#1d1915;color:#f6ead5;font-family:Arial,sans-serif;display:grid;place-items:center;min-height:100vh">
+      <main style="max-width:560px;padding:32px;border:1px solid #6c5a43;background:#27211a">
+        <h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>
+        <a href="/" style="color:#ffb020">Gaffur'a dön</a>
+      </main></body></html>`;
+}
+
+api.on(['GET', 'POST'], '/unsubscribe/:token', async (c) => {
+  const token = c.req.param('token');
+  const ok = token.length >= 20 && await unsubscribeExternalNotifications(c.env, token, now());
+  return new Response(accountStatusHtml(
+    ok ? 'Bildirimler kapatıldı' : 'Bağlantı geçersiz',
+    ok
+      ? 'E-posta ve web push bildirimlerin kapatıldı. Uygulama içi bildirimlerin hesabında kalmaya devam eder.'
+      : 'Bu abonelikten çıkma bağlantısı bulunamadı veya artık geçerli değil.'
+  ), { status: ok ? 200 : 404, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+});
+
+api.get('/verify-email/:token', async (c) => {
+  const token = c.req.param('token');
+  const row = await c.env.DB.prepare(
+    'SELECT user_id FROM email_verification_tokens WHERE token = ? AND expires_at > ?'
+  ).bind(token, now()).first<{ user_id: number }>();
+  if (!row) {
+    return new Response(accountStatusHtml('Bağlantı geçersiz', 'Doğrulama bağlantısının süresi dolmuş veya bağlantı kullanılmış.'), {
+      status: 404,
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+    });
+  }
+  await c.env.DB.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').bind(row.user_id).run();
+  await c.env.DB.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').bind(row.user_id).run();
+  return new Response(accountStatusHtml('E-posta doğrulandı', 'E-posta fiyat bildirimlerini artık hesabından etkinleştirebilirsin.'), {
+    headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+  });
+});
 
 api.post('/auth/register', async (c) => {
   const body = await c.req.json<{ email?: string; password?: string; display_name?: string; kvkk_consent?: boolean }>().catch(() => ({}) as any);
@@ -1105,6 +1261,7 @@ api.post('/auth/register', async (c) => {
   const sessionId = generateSessionId();
   const expiresAt = t + SESSION_MAX_AGE_S;
   await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(sessionId, userId, expiresAt, t).run();
+  await ensureNotificationPreferences(c.env, userId, t);
 
   setCookie(c, userCookieName(c), sessionId, {
     httpOnly: true,
@@ -1156,7 +1313,152 @@ api.post('/auth/logout', async (c) => {
 api.get('/auth/me', async (c) => {
   const user = await getUserFromSession(c.env, readUserCookie(c));
   if (!user) return c.json({ authed: false });
-  return c.json({ authed: true, user: { id: user.id, email: user.email, role: user.role } });
+  return c.json({ authed: true, user: { id: user.id, email: user.email, role: user.role, email_verified: user.email_verified } });
+});
+
+api.get('/auth/notification-preferences', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const preferences = await ensureNotificationPreferences(c.env, user.id, now());
+  const push = webPushPublicConfig(c.env);
+  return c.json({
+    preferences: {
+      email_enabled: Boolean(preferences.email_enabled),
+      web_push_enabled: Boolean(preferences.web_push_enabled),
+      delivery_mode: preferences.delivery_mode,
+      unsubscribed: preferences.unsubscribed_at != null,
+    },
+    email_verified: Boolean(user.email_verified),
+    channels: {
+      email: { configured: emailConfigured(c.env) },
+      web_push: push,
+    },
+  });
+});
+
+api.put('/auth/notification-preferences', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const body = await c.req.json<{
+    email_enabled?: boolean;
+    web_push_enabled?: boolean;
+    delivery_mode?: string;
+  }>().catch(() => ({} as { email_enabled?: boolean; web_push_enabled?: boolean; delivery_mode?: string }));
+  const current = await ensureNotificationPreferences(c.env, user.id, now());
+  const emailEnabled = body.email_enabled == null ? Boolean(current.email_enabled) : Boolean(body.email_enabled);
+  const pushEnabled = body.web_push_enabled == null ? Boolean(current.web_push_enabled) : Boolean(body.web_push_enabled);
+  const deliveryMode = body.delivery_mode == null ? current.delivery_mode : String(body.delivery_mode);
+  if (!['instant', 'daily'].includes(deliveryMode)) return c.json({ error: 'Teslimat biçimi geçersiz' }, 400);
+  if (emailEnabled && !user.email_verified) return c.json({ error: 'Önce e-posta adresini doğrula' }, 409);
+  if (emailEnabled && !emailConfigured(c.env)) return c.json({ error: 'E-posta kanalı sunucuda henüz yapılandırılmadı' }, 503);
+  if (pushEnabled && !webPushPublicConfig(c.env).configured) return c.json({ error: 'Web push kanalı sunucuda henüz yapılandırılmadı' }, 503);
+  if (pushEnabled) {
+    const subscription = await c.env.DB.prepare(
+      'SELECT 1 FROM push_subscriptions WHERE user_id = ? AND active = 1 LIMIT 1'
+    ).bind(user.id).first();
+    if (!subscription) return c.json({ error: 'Önce bu tarayıcıda bildirim izni ver' }, 409);
+  }
+  const t = now();
+  await c.env.DB.prepare(
+    `UPDATE notification_preferences
+     SET email_enabled = ?, web_push_enabled = ?, delivery_mode = ?,
+         unsubscribed_at = ?, updated_at = ? WHERE user_id = ?`
+  ).bind(emailEnabled ? 1 : 0, pushEnabled ? 1 : 0, deliveryMode, emailEnabled || pushEnabled ? null : current.unsubscribed_at, t, user.id).run();
+  if (!emailEnabled) {
+    await c.env.DB.prepare(
+      `UPDATE notification_deliveries SET status = 'skipped', last_error = 'E-posta tercihi kapatıldı'
+       WHERE user_id = ? AND channel = 'email' AND status = 'pending'`
+    ).bind(user.id).run();
+  }
+  if (!pushEnabled) {
+    await c.env.DB.prepare(
+      `UPDATE notification_deliveries SET status = 'skipped', last_error = 'Web push tercihi kapatıldı'
+       WHERE user_id = ? AND channel = 'web_push' AND status = 'pending'`
+    ).bind(user.id).run();
+  }
+  return c.json({ ok: true });
+});
+
+api.post('/auth/email/verification', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  if (user.email_verified) return c.json({ ok: true, alreadyVerified: true });
+  if (!emailConfigured(c.env)) return c.json({ error: 'E-posta kanalı sunucuda henüz yapılandırılmadı' }, 503);
+  const limited = await limitHit(c.env, `email-verify:${user.id}`, 3, 3600);
+  if (limited) return c.json({ error: `Yeni bağlantı için ${dakika(limited)} dakika bekle` }, 429);
+  const t = now();
+  const token = randomToken();
+  await c.env.DB.prepare('DELETE FROM email_verification_tokens WHERE user_id = ?').bind(user.id).run();
+  await c.env.DB.prepare(
+    'INSERT INTO email_verification_tokens (token, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'
+  ).bind(token, user.id, t + 24 * 3600, t).run();
+  const base = (c.env.PUBLIC_BASE_URL || 'https://gaffur.net').replace(/\/$/, '');
+  const verificationUrl = `${base}/api/verify-email/${encodeURIComponent(token)}`;
+  const sent = await sendEmail(c.env, {
+    to: user.email,
+    subject: 'Gaffur e-posta adresini doğrula',
+    html: `<h2>Gaffur e-posta doğrulaması</h2><p>Fiyat bildirimlerini açmak için bağlantıya tıkla:</p><p><a href="${escapeHtml(verificationUrl)}">E-posta adresimi doğrula</a></p><p>Bağlantı 24 saat geçerlidir.</p>`,
+  });
+  if (!sent.ok) {
+    await c.env.DB.prepare('DELETE FROM email_verification_tokens WHERE token = ?').bind(token).run();
+    return c.json({ error: sent.error ?? 'Doğrulama e-postası gönderilemedi' }, 502);
+  }
+  return c.json({ ok: true });
+});
+
+api.post('/auth/push-subscriptions', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  if (!webPushPublicConfig(c.env).configured) return c.json({ error: 'Web push kanalı sunucuda henüz yapılandırılmadı' }, 503);
+  const body = await c.req.json<{ endpoint?: string; keys?: { p256dh?: string; auth?: string } }>()
+    .catch(() => ({} as { endpoint?: string; keys?: { p256dh?: string; auth?: string } }));
+  const endpoint = String(body.endpoint ?? '').trim();
+  const p256dh = String(body.keys?.p256dh ?? '').trim();
+  const auth = String(body.keys?.auth ?? '').trim();
+  if (!isAllowedPushEndpoint(endpoint)) return c.json({ error: 'Desteklenmeyen web push servis adresi' }, 400);
+  if (endpoint.length > 2048 || p256dh.length < 40 || auth.length < 16) return c.json({ error: 'Push abonelik anahtarları geçersiz' }, 400);
+  const existing = await c.env.DB.prepare('SELECT id, user_id FROM push_subscriptions WHERE endpoint = ?')
+    .bind(endpoint).first<{ id: number; user_id: number }>();
+  if (existing && existing.user_id !== user.id) return c.json({ error: 'Bu tarayıcı aboneliği başka bir hesaba bağlı' }, 409);
+  const t = now();
+  if (existing) {
+    await c.env.DB.prepare(
+      `UPDATE push_subscriptions SET p256dh = ?, auth = ?, active = 1,
+       fail_count = 0, last_error = NULL, updated_at = ? WHERE id = ?`
+    ).bind(p256dh, auth, t, existing.id).run();
+  } else {
+    await c.env.DB.prepare(
+      `INSERT INTO push_subscriptions
+       (user_id, endpoint, p256dh, auth, active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 1, ?, ?)`
+    ).bind(user.id, endpoint, p256dh, auth, t, t).run();
+  }
+  await ensureNotificationPreferences(c.env, user.id, t);
+  await c.env.DB.prepare(
+    `UPDATE notification_preferences SET web_push_enabled = 1, unsubscribed_at = NULL, updated_at = ?
+     WHERE user_id = ?`
+  ).bind(t, user.id).run();
+  return c.json({ ok: true });
+});
+
+api.delete('/auth/push-subscriptions', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const body = await c.req.json<{ endpoint?: string }>().catch(() => ({} as { endpoint?: string }));
+  const endpoint = String(body.endpoint ?? '').trim();
+  const t = now();
+  await c.env.DB.prepare(
+    'UPDATE push_subscriptions SET active = 0, updated_at = ? WHERE user_id = ? AND endpoint = ?'
+  ).bind(t, user.id, endpoint).run();
+  const active = await c.env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id = ? AND active = 1'
+  ).bind(user.id).first<{ n: number }>();
+  if (!active?.n) {
+    await c.env.DB.prepare(
+      'UPDATE notification_preferences SET web_push_enabled = 0, updated_at = ? WHERE user_id = ?'
+    ).bind(t, user.id).run();
+  }
+  return c.json({ ok: true });
 });
 
 api.get('/auth/notifications', async (c) => {

@@ -1,6 +1,6 @@
 # Gaffur — gaffur.net Fiyat Takip → Karşılaştırma Platformu
 
-Ürün fiyatlarını izleyen, düşüşte Telegram + uygulama içi bildirim gönderen,
+Ürün fiyatlarını izleyen, düşüşte uygulama içi + Telegram + isteğe bağlı e-posta/web push bildirimi gönderen,
 fiyat geçmişini grafikle sunan web uygulaması. **Node/Docker (Coolify)** üzerinde çalışır;
 DATABASE_URL varsa Postgres, yoksa SQLite. Türkçe arayüz, koyu tema,
 vurgu rengi amber (#FFB020).
@@ -21,6 +21,8 @@ src/worker/          Cloudflare Worker (Hono API + cron)
     worker.ts        Kuyruktaki işleri scrape engine ile çalıştırır
   db.ts              D1 yardımcıları, settings varsayılanları
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
+  notifications/     E-posta, standart Web Push/VAPID, tercih ve teslimat kuyruğu
+  intelligence/      Baseline/stok, landed cost, günlük fırsat ve 10 günlük iç uyum hesabı
   scrape/
     crawlee.ts       CheerioCrawler transport; disksiz storage + her redirect'te SSRF doğrulama
     registry.ts      Site → kararlı parser sürümü dispatch'i
@@ -51,8 +53,9 @@ kategori bağlantıları `/kategori/{id}-{slug}` sayfasına gider.
 Kullanıcılar ürün kartından kendi `watches` listelerine ürün ekleyip çıkarır. Watch
 eşikleri her fiyat güncellemesinde değerlendirilir; kişisel bildirimler
 `notifications.user_id/watch_id` ile operasyon bildirimlerinden ayrılır ve Hesabım
-ekranında gösterilir. Kullanıcıya özel kanal bilgisi henüz olmadığı için bu bildirimler
-uygulama içidir; global yönetici Telegram sohbetine gönderilmez.
+ekranında gösterilir. Faz 7 ile doğrulanmış e-posta ve tarayıcı Web Push kanalları,
+`instant`/`daily` tercihi, teslimat retry kuyruğu ve tek tık dış kanal iptali eklendi.
+Kişisel bildirimler global yönetici Telegram sohbetine gönderilmez.
 
 Faz 4 fiyat/stok zekâsı `src/worker/intelligence/` altındadır. Stok durumu
 `in_stock/out_of_stock/preorder/unknown` olarak tutulur; değişim ancak iki ardışık aynı
@@ -79,6 +82,13 @@ en az 30 günlük geçmiş varsa indekslenir; sorgu parametreli ve kanıtı yete
 `noindex, follow` olur. Aktif/arşiv/kategori sitemapleri ile `/urun/{slug}.json` publictir.
 Pasif ürün silinmez; son kayıtlı fiyat açıklamasıyla arşivde kalır. `PUBLIC_BASE_URL` canonical
 origin'i belirler (prod değeri: `https://gaffur.net`).
+
+Faz 7 günlük işleri `opportunity_feed` ve `compliance_assessments` snapshot tablolarını
+cron içinde günde bir yeniler; public fırsat GET'i istek anında ağır hesap yapmaz. Fırsatlar
+30 günlük medyanı ve all-time low'u kullanır, stok dışı ürünleri dışlar. 10 günlük fiyat aracı
+yalnız `/yonetim` içindeki **Uyum** sekmesindedir; hukuki “ihlal” kararı üretmez ve CSV kanıtı
+verir. Birincil kaynak ve sınırlamalar `docs/phase7-legal-sources.md` içindedir. Dış kanal
+sağlayıcıları yoksa teslimat `sent` olmaz; yapılandırma bekleyen kuyruk olarak kalır.
 
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
@@ -116,7 +126,7 @@ origin'i belirler (prod değeri: `https://gaffur.net`).
 npm run dev        # sadece Vite (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm test           # vitest (84 test; tüm fazlar + SSR/SEO)
+npm test           # vitest (90 test; tüm fazlar + Faz 7 teslimat/fırsat/uyum)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
 ```
@@ -133,11 +143,14 @@ DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
 
 ## Deploy (gaffur.net — Coolify/Docker)
 
-1. Coolify'da ortam değişkenleri: `PASSWORD=...`, `PUBLIC_BASE_URL=https://gaffur.net`
-2. Opsiyonel: `DATABASE_URL=postgres://...` (yoksa SQLite)
-3. Build: `npm run build && npm run build:node`
-4. Başlat: `node dist/server/index.mjs`
-5. Uygulama ayarlarından Telegram botunu bağla
+1. Coolify'da zorunlu ortam değişkenleri: `PASSWORD=...`, `PUBLIC_BASE_URL=https://gaffur.net`
+2. Opsiyonel DB: `DATABASE_URL=postgres://...` (yoksa SQLite)
+3. E-posta için: `RESEND_API_KEY`, `EMAIL_FROM` (ör. `Gaffur <bildirim@gaffur.net>`)
+4. Web Push için `npm run vapid:generate` çıktısındaki `VAPID_PUBLIC_KEY`,
+   `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` değerlerini Coolify secret olarak ekle
+5. Build: `npm run build && npm run build:node`
+6. Başlat: `node dist/server/index.mjs`
+7. Uygulama ayarlarından Telegram botunu bağla
 
 ## Kurallar
 

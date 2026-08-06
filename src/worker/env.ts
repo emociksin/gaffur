@@ -23,6 +23,13 @@ export interface Env {
   ASSETS: Fetcher;
   /** SEO sayfalarinda canonical URL ve sitemap icin disaridan gorunen origin. */
   PUBLIC_BASE_URL?: string;
+  /** Resend HTTP API ile e-posta teslimati. Ikisi birlikte yoksa kanal kapali raporlanir. */
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  /** Standart Web Push (RFC 8291) icin VAPID anahtarlari. */
+  VAPID_SUBJECT?: string;
+  VAPID_PUBLIC_KEY?: string;
+  VAPID_PRIVATE_KEY?: string;
   /**
    * Yonetim parolasi. Prod'da ZORUNLU: ortam degiskeninden verilir.
    * Tanimli degilse uygulama fail-closed calisir: tum API 503 doner.

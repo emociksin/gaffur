@@ -101,6 +101,11 @@ const env = {
   DB: db,
   ASSETS,
   PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT,
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   PASSWORD: process.env.PASSWORD,
   ALLOW_OPEN: process.env.ALLOW_OPEN,
 } as unknown as Env;

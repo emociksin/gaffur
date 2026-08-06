@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Category, Product, Summary } from '../../shared/types';
+import type { Category, Opportunity, Product, Summary } from '../../shared/types';
 import { publicCategoryPath } from '../../shared/routes';
 import { changePct, money, pctFmt, timeAgo } from '../format';
 import { IconBox, IconPlus, IconSearch, IconRefresh, Spinner, useIsAdmin, useToast } from '../ui';
@@ -12,6 +12,7 @@ export function Dashboard({
   products,
   cats,
   summary,
+  opportunities,
   onOpenDetail,
   onAdd,
   refresh,
@@ -21,6 +22,7 @@ export function Dashboard({
   products: Product[] | null;
   cats: Category[];
   summary: Summary | null;
+  opportunities: Opportunity[];
   onOpenDetail: (id: number) => void;
   onAdd: () => void;
   refresh: () => Promise<void>;
@@ -137,17 +139,21 @@ export function Dashboard({
         </section>
       )}
 
-      {summary && summary.topDrops.length > 0 && (
+      {opportunities.length > 0 && (
         <section className="topdrops">
-          <h3>Son 7 günün fırsatları</h3>
+          <div className="topdrops-head">
+            <h3>Bugünün fırsatları</h3>
+            <span>30 günlük medyana göre, stokta olan ürünler</span>
+          </div>
           <div className="topdrops-row">
-            {summary.topDrops.map((d) => (
-              <button key={d.id} className="topdrop" onClick={() => onOpenDetail(d.id)}>
-                <span className="topdrop-pct">▼ {pctFmt(d.pct)}</span>
-                <span className="topdrop-title">{d.title}</span>
+            {opportunities.map((deal) => (
+              <button key={deal.product_id} className="topdrop" onClick={() => onOpenDetail(deal.product_id)}>
+                <span className="topdrop-pct">▼ {pctFmt(deal.drop_pct)}</span>
+                <span className="topdrop-title">{deal.title}</span>
                 <span className="topdrop-price">
-                  <s>{money(d.from_price, d.currency)}</s> {money(d.current_price, d.currency)}
+                  <s>{money(deal.reference_price, deal.currency)}</s> {money(deal.current_price, deal.currency)}
                 </span>
+                {deal.at_all_time_low ? <span className="topdrop-low">Tarihî en düşük</span> : null}
               </button>
             ))}
           </div>

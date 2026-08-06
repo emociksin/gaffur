@@ -97,6 +97,22 @@ describe('Faz 6 SSR, yapilandirilmis veri ve indeksleme', () => {
     expect(publicCategoryPath({ id: 2, name: 'Cep Telefonları' })).toBe('/kategori/2-cep-telefonlari');
   });
 
+  it('public API uzerinden urun ekleme veya onizleme yaptirmaz', async () => {
+    const protectedEnv = { ...env, PASSWORD: 'admin-secret' };
+    const add = await app.fetch(new Request('https://gaffur.test/api/products', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://shop.test/yeni-urun' }),
+    }), protectedEnv);
+    const preview = await app.fetch(new Request('https://gaffur.test/api/preview', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ url: 'https://shop.test/yeni-urun' }),
+    }), protectedEnv);
+    expect(add.status).toBe(401);
+    expect(preview.status).toBe(401);
+  });
+
   it('iki teklif veya 30 gun gecmis kuraliyla indekslenebilirligi hesaplar', async () => {
     const established = await loadPublicProduct(env, 1);
     const newProduct = await loadPublicProduct(env, 2);

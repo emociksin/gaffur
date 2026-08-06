@@ -268,15 +268,14 @@ export function SettingsPage({ open }: { open: boolean }) {
           // ve operator korumasiz calistigini fark edemiyordu.
           <div className="setup-warn">
             Bu kurulum <b>parolasız</b> çalışıyor: adrese ulaşan herkes ürünleri görebilir,
-            silebilir ve ayarları (Telegram, Firecrawl anahtarları dahil) okuyabilir. Sadece
-            yerel geliştirme için uygundur. Yayına almadan önce{' '}
-            <code>npx wrangler secret put PASSWORD</code> çalıştır ve <code>.dev.vars</code>{' '}
-            içindeki <code>ALLOW_OPEN</code> satırını sil.
+            silebilir ve yönetim ayarlarını değiştirebilir. Bu yalnızca yerel geliştirme için
+            uygundur. Yayına almadan önce Coolify ortam değişkenlerinde <code>PASSWORD</code>{' '}
+            tanımla ve <code>ALLOW_OPEN</code> değişkenini kaldır.
           </div>
         ) : (
           <p className="mut">
-            Uygulama parola korumalı. Parolayı değiştirmek için sunucuda{' '}
-            <code>npx wrangler secret put PASSWORD</code> komutunu çalıştırman yeterli.
+            Uygulama parola korumalı. Parolayı Coolify ortam değişkenlerindeki{' '}
+            <code>PASSWORD</code> değeri belirler; değişiklikten sonra yeniden dağıtım gerekir.
           </p>
         )}
       </section>

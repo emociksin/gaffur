@@ -359,6 +359,16 @@ a:hover {
   color: var(--mut);
   margin-bottom: 9px;
 }
+.topdrops-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.topdrops-head span {
+  color: var(--mut);
+  font-size: 0.72rem;
+}
 .topdrops-row {
   display: flex;
   gap: 10px;
@@ -405,6 +415,103 @@ a:hover {
   opacity: 0.7;
   margin-right: 4px;
 }
+.topdrop-low {
+  margin-top: 3px;
+  padding: 2px 5px;
+  border: 1px solid #3E7A5066;
+  color: var(--green);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Faz 7: ic uyum araci ---------- */
+.compliance-page {
+  display: grid;
+  gap: 16px;
+}
+.compliance-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.compliance-head h2 {
+  margin: 5px 0 7px;
+  font-size: 1.35rem;
+}
+.compliance-head p {
+  max-width: 760px;
+  color: var(--mut);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.compliance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px;
+}
+.compliance-list {
+  display: grid;
+  gap: 9px;
+}
+.compliance-row {
+  display: grid;
+  gap: 9px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line);
+  background: var(--card);
+}
+.compliance-suspicious { border-left-color: var(--red); }
+.compliance-consistent { border-left-color: var(--green); }
+.compliance-insufficient_data { border-left-color: var(--acc); }
+.compliance-row-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.compliance-row-title button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--txt);
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+.compliance-status {
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  color: var(--mut);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.compliance-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 18px;
+  color: var(--mut);
+  font-size: 0.75rem;
+}
+.compliance-prices b { color: var(--txt); }
+.compliance-row > p {
+  color: var(--mut);
+  font-size: 0.78rem;
+}
+.compliance-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  color: var(--mut);
+  font-size: 0.7rem;
+}
+.compliance-meta a { color: var(--acc-deep); }
 
 /* ---------- filtre cubugu ---------- */
 .filterbar {
@@ -1542,6 +1649,88 @@ input:not([type='color']):not([type='checkbox']) {
 .account-card {
   position: relative;
   width: min(420px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.account-preferences {
+  width: 100%;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  text-align: left;
+}
+.account-preferences-head {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.78rem;
+}
+.account-preferences-head span,
+.account-pref-row small {
+  color: var(--mut);
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+.account-pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.76rem;
+}
+.account-pref-row > span {
+  display: grid;
+  gap: 2px;
+}
+.account-pref-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+.account-inline-action,
+.account-stop-external {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--acc-deep);
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+.account-inline-action:disabled,
+.account-stop-external:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.account-delivery-mode {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.76rem;
+}
+.account-delivery-mode select {
+  min-width: 145px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--txt);
+}
+.account-stop-external {
+  color: var(--red);
+  justify-self: start;
+}
+.account-notice {
+  width: 100%;
+  padding: 8px;
+  border-left: 2px solid var(--green);
+  background: var(--green-dim);
+  color: var(--green);
+  font-size: 0.74rem;
+  text-align: left;
 }
 
 .account-card form {

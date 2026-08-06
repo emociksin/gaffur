@@ -37,11 +37,20 @@ class PgStatement {
 
   async run(): Promise<{ success: true; meta: { last_row_id: number; changes: number } }> {
     // INSERT sorgularina RETURNING id ekle (D1 uyumu icin last_row_id gerekli)
-    let q = this.#query;
-    if (/^\s*INSERT\b/i.test(q) && !/RETURNING/i.test(q)) {
-      q = q.replace(/\s*$/, ' RETURNING id');
+    const original = this.#query;
+    let q = original;
+    const autoReturning = /^\s*INSERT\b/i.test(q) && !/RETURNING/i.test(q);
+    if (autoReturning) q = q.replace(/\s*$/, ' RETURNING id');
+    let rows: any;
+    try {
+      rows = await this.#sql.unsafe(q, this.#args as any[]);
+    } catch (error: any) {
+      // settings, notification_preferences, opportunity_feed gibi dogal anahtarli
+      // tablolarda `id` kolonu yoktur. PostgreSQL bu durumda 42703 verir; INSERT henuz
+      // uygulanmadigi icin sorguyu RETURNING olmadan guvenle yeniden calistirabiliriz.
+      if (!autoReturning || error?.code !== '42703') throw error;
+      rows = await this.#sql.unsafe(original, this.#args as any[]);
     }
-    const rows = await this.#sql.unsafe(q, this.#args as any[]);
     const lastId = (rows[0] as any)?.id ?? 0;
     return { success: true, meta: { last_row_id: lastId, changes: rows.count } };
   }

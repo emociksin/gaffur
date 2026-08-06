@@ -1,9 +1,8 @@
 // SSRF korumasi + guvenli fetch.
 //
-// directFetch kullanici tarafindan verilen URL'leri ceker ve bu uc oturumsuz
-// ziyaretciye acik (/api/preview, POST /api/products). Koruma olmadan bir
-// saldirgan Worker'a ic ag / bulut metadata servisine (169.254.169.254) istek
-// attirabilir. Uc katmanli savunma:
+// directFetch yoneticinin girdigi magazaya ve kuyruktaki kayitli URL'lere gider.
+// Koruma olmadan ele gecirilmis bir yonetim oturumu veya zehirli eski veri sunucuya
+// ic ag / bulut metadata servisi (169.254.169.254) istegi attirabilir. Uc katmanli savunma:
 //   1. sema + userinfo dogrulamasi           (her runtime)
 //   2. IP-literal host'larin ozel/reserved aralik kontrolu (her runtime)
 //   3. hostname'in DNS ile cozulup her cozulen IP'nin kontrolu (Node)
