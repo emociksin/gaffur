@@ -11,6 +11,7 @@ vurgu rengi amber (#FFB020).
 src/worker/          Cloudflare Worker (Hono API + cron)
   index.ts           fetch (Hono) + scheduled (cron) girişleri
   api.ts             REST rotaları (/api/*)
+  seo.ts             Public ürün/kategori SSR, JSON-LD, sitemap ve JSON uçları
   auth.ts            Tek parola + HMAC imzalı cookie (admin) + çok kullanıcılı hesap (users/sessions)
   cron.ts            15 dk'da bir: sırası gelen ürünler (parti 10) + oto kategori keşfi (6 saatte bir, parti 2)
   crawl/
@@ -66,6 +67,16 @@ gerçeği: 6 Şubat 2026 sonrası genel posta e-ticaret ürününe %30/%60 doğr
 ilaç/takviye ve yolcu senaryolarında geçerlidir. Kaynak kaydı:
 `docs/phase5-legal-sources.md`.
 
+Faz 6 public katmanı `src/worker/seo.ts` içindedir. `/urun/{id}-{slug}` ve
+`/kategori/{id}-{slug}` mevcut Vite HTML/CSS kabuğunu kullanarak sunucuda tam HTML üretir;
+React bu sayfalarda `data-gaffur-ssr` işareti nedeniyle statik içeriği silmez. Ürün sayfası
+Product + AggregateOffer + BreadcrumbList JSON-LD, görünür SVG grafik ve günlük HTML fiyat
+tablosu içerir. Kategori sayfasında ItemList bulunur. Ürün ancak en az iki aktif teklif veya
+en az 30 günlük geçmiş varsa indekslenir; sorgu parametreli ve kanıtı yetersiz sayfalar
+`noindex, follow` olur. Aktif/arşiv/kategori sitemapleri ile `/urun/{slug}.json` publictir.
+Pasif ürün silinmez; son kayıtlı fiyat açıklamasıyla arşivde kalır. `PUBLIC_BASE_URL` canonical
+origin'i belirler (prod değeri: `https://gaffur.net`).
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık
@@ -102,7 +113,7 @@ ilaç/takviye ve yolcu senaryolarında geçerlidir. Kaynak kaydı:
 npm run dev        # sadece Vite (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm test           # vitest (parsePrice + SSRF testleri)
+npm test           # vitest (83 test; tüm fazlar + SSR/SEO)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
 ```
@@ -119,7 +130,7 @@ DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
 
 ## Deploy (gaffur.net — Coolify/Docker)
 
-1. Coolify'da ortam değişkeni: `PASSWORD=...`
+1. Coolify'da ortam değişkenleri: `PASSWORD=...`, `PUBLIC_BASE_URL=https://gaffur.net`
 2. Opsiyonel: `DATABASE_URL=postgres://...` (yoksa SQLite)
 3. Build: `npm run build && npm run build:node`
 4. Başlat: `node dist/server/index.mjs`

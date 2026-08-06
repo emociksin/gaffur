@@ -21,6 +21,8 @@ interface Fetcher {
 export interface Env {
   DB: D1Database;
   ASSETS: Fetcher;
+  /** SEO sayfalarinda canonical URL ve sitemap icin disaridan gorunen origin. */
+  PUBLIC_BASE_URL?: string;
   /**
    * Yonetim parolasi. Prod'da ZORUNLU: ortam degiskeninden verilir.
    * Tanimli degilse uygulama fail-closed calisir: tum API 503 doner.

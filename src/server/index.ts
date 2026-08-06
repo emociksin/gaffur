@@ -100,6 +100,7 @@ const ASSETS = {
 const env = {
   DB: db,
   ASSETS,
+  PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL,
   PASSWORD: process.env.PASSWORD,
   ALLOW_OPEN: process.env.ALLOW_OPEN,
 } as unknown as Env;

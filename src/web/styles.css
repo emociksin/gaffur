@@ -1954,3 +1954,196 @@ textarea:focus {
   font-size: 0.9rem;
   margin: 0;
 }
+
+/* --- Faz 6: sunucuda uretilen public urun/kategori sayfalari --- */
+.seo-app {
+  min-height: 100vh;
+}
+.seo-hdr .brand {
+  text-decoration: none;
+}
+.seo-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 22px;
+  color: var(--mut);
+  font-size: 0.84rem;
+}
+.seo-breadcrumb a {
+  color: var(--acc-deep);
+}
+.seo-product {
+  display: grid;
+  gap: 18px;
+}
+.seo-product-head {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  padding: 22px;
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+  box-shadow: var(--shadow);
+}
+.seo-product-head:not(.has-image) {
+  display: flex;
+  flex-wrap: wrap;
+}
+.seo-product-head:not(.has-image) > div:not(.seo-current-price) {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.seo-product-head:not(.has-image) .seo-current-price {
+  flex: 0 0 auto;
+}
+.seo-product-head h1 {
+  margin: 8px 0 10px;
+  font-family: var(--serif);
+  font-size: clamp(1.45rem, 3vw, 2.2rem);
+  line-height: 1.12;
+}
+.seo-product-image {
+  width: 150px;
+  height: 150px;
+  padding: 8px;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+.seo-current-price {
+  min-width: 150px;
+  text-align: right;
+}
+.seo-current-price small {
+  display: block;
+  color: var(--mut);
+  margin-bottom: 5px;
+}
+.seo-current-price strong {
+  display: block;
+  color: var(--green);
+  font-family: var(--serif);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-variant-numeric: tabular-nums;
+}
+.seo-judgement {
+  margin: 0 0 8px;
+  color: var(--txt);
+  font-weight: 650;
+}
+.seo-section {
+  padding: 20px 22px;
+  background: var(--card);
+  border: 1px solid var(--line2);
+  border-radius: 5px;
+}
+.seo-section h2 {
+  margin: 0 0 12px;
+  font-family: var(--serif);
+}
+.seo-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.seo-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 650px;
+  font-size: 0.88rem;
+}
+.seo-table th,
+.seo-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+}
+.seo-table th {
+  color: var(--mut);
+  background: var(--bg2);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.seo-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.seo-note {
+  margin: 12px 0 0;
+  color: var(--mut);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.seo-chart {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+.seo-price-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 250px;
+}
+.seo-chart-axis {
+  stroke: var(--line2);
+  stroke-width: 1.5;
+}
+.seo-chart-line {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.seo-chart figcaption {
+  margin-top: 4px;
+  color: var(--mut);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.seo-card {
+  color: var(--txt);
+  text-decoration: none;
+}
+.seo-card:hover {
+  color: var(--txt);
+}
+
+@media (max-width: 760px) {
+  .seo-hdr .hdr-tagline {
+    display: none;
+  }
+  .seo-product-head {
+    grid-template-columns: 88px minmax(0, 1fr);
+    gap: 14px;
+    padding: 16px;
+  }
+  .seo-product-head:not(.has-image) {
+    display: flex;
+  }
+  .seo-product-image {
+    width: 88px;
+    height: 88px;
+  }
+  .seo-current-price {
+    grid-column: 1 / -1;
+    min-width: 0;
+    text-align: left;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .seo-product-head:not(.has-image) .seo-current-price {
+    flex-basis: 100%;
+  }
+  .seo-section {
+    padding: 16px;
+  }
+}

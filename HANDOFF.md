@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 5 Tamamlandı, Faz 6 Sırada
+# Gaffur Handoff — Faz 6 Tamamlandı, Faz 7 Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (73 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost), GitHub Actions CI
+- **Test:** Vitest (83 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost + SSR/SEO), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -17,6 +17,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 ```
 src/worker/          Hono API + cron + scrape engine
   index.ts           Hono app export
+  seo.ts             Public ürün/kategori SSR, JSON-LD, sitemap ve JSON uçları
   api.ts             REST rotaları (/api/*) — admin auth + kullanıcı auth + watches
   auth.ts            Tek parola (admin) + çok kullanıcılı hesap (users/sessions)
   cron.ts            15 dk zamanlayıcı
@@ -71,7 +72,7 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 6
+## Sıradaki İş — Faz 7
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -121,10 +122,20 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 - [x] Ürün detayında mevcut tasarım diliyle maliyet hesaplayıcı, kargo ve taksit görünümü
 - [x] Yönetici lojistik girişi ve mevzuat-kodlu maliyet snapshot API'ı
 
-### Faz 6 — Public SSR + SEO **← sıradaki**
-- [ ] Ürün sayfalarını sunucudan HTML olarak üret; istemci SPA yönetimini koru
-- [ ] Product + AggregateOffer JSON-LD, görünür fiyat geçmişi tablosu
-- [ ] Sitemap segmentasyonu, canonical/noindex kuralları ve ürün JSON uçları
+### Faz 6 — Public SSR + SEO ✅
+- [x] `/urun/{id}-{slug}` ve `/kategori/{id}-{slug}` sayfalarını mevcut tasarım diliyle sunucudan tam HTML üretme
+- [x] Product + AggregateOffer + BreadcrumbList; kategoride ItemList; uydurma Review/Rating ve Merchant listing yok
+- [x] Görünür SVG fiyat grafiği + günlük HTML tablo + min/max/ortalama/medyan düz metinleri
+- [x] En az 2 teklif veya 30 gün geçmiş indeks eşiği; sorgulu/yetersiz sayfalarda `noindex, follow`
+- [x] Canonical 301, tarihli hüküm, görünür `dateModified`, pasif ürün için son fiyatlı arşiv sayfası
+- [x] Aktif/arşiv/kategori sitemapleri, AI bot kuralları, `llms.txt`, `/urun/{slug}.json`
+- [x] `brand`, `gtin`, `mpn`, `sku` çift DB migration ve kontrollü PATCH desteği
+
+### Faz 7 — Bildirim ve Fırsat Katmanı **← sıradaki**
+- [ ] Kullanıcı bazlı e-posta ve web push kanal modeli; tek tık abonelikten çıkma
+- [ ] Anlık / günlük özet tercihleri; mevcut dedup ve cooldown ile kanal dağıtımı
+- [ ] Günlük hesaplanan fırsat akışı; 30 günlük medyan/all-time low referansları
+- [ ] 10 günlük fiyat kuralı için yalnız iç kullanım uyum aracı ve kanıt export'u
 
 ### Faz 7-8 Özet
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
@@ -147,7 +158,7 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (73 test)
+npm test           # vitest (83 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```
@@ -156,6 +167,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 
 - **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
 - **Genel yurtdışı ürünün vergisi GTİP olmadan hesaplanamaz:** UI bilinmeyen vergi/masrafı kesin toplam gibi göstermez
+- **Canonical origin:** Prod'da `PUBLIC_BASE_URL=https://gaffur.net` verilmelidir; verilmezse güvenli varsayılan zaten `https://gaffur.net` olur
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
 

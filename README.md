@@ -17,6 +17,8 @@ Docker/Coolify üzerinde çalışır.
 - **Bildirimler:** Fiyat düşüşü, hedef fiyata iniş, stok değişimi, yeni ürün — uygulama
   içi + Telegram. Ürün başına mod ve % eşiği seçilebilir.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
+- **Public ürün sayfaları:** Sunucudan tam HTML, Product/AggregateOffer yapılandırılmış verisi,
+  günlük grafik + tablo, kanonik ürün/kategori adresleri ve segmentli sitemapler.
 - **Fiyat/stok zekâsı:** 30/90 günlük medyan, 10 günlük en düşük, %2 gürültü filtresi;
   stok değişiminde iki ardışık doğrulama ve `unknown` güvenliği.
 - **Kapıdaki maliyet:** Kargo/taksit verisi; yurtiçi, posta ve yolcu beraberinde maliyet
@@ -38,7 +40,8 @@ koyma; canlıda `PASSWORD` zorunludur.
 
 ## gaffur.net'e Deploy
 
-Docker image'i Coolify ile çalıştır. En az `PASSWORD`, Postgres kullanılacaksa ayrıca
+Docker image'i Coolify ile çalıştır. En az `PASSWORD` ve
+`PUBLIC_BASE_URL=https://gaffur.net`; Postgres kullanılacaksa ayrıca
 `DATABASE_URL=postgres://...` tanımla. Değişiklikler `main` dalına push edilince VPS
 otomatik deploy hattı tetiklenir.
 

@@ -16,3 +16,14 @@ takip başlatabilir.
 
 ## İletişim
 - [Anasayfa](https://gaffur.net/)
+
+## Makine tarafından okunabilir public içerik
+- Ürün sayfaları: `https://gaffur.net/urun/{id}-{slug}`
+- Ürün JSON verisi: `https://gaffur.net/urun/{id}-{slug}.json`
+- Kategori sayfaları: `https://gaffur.net/kategori/{id}-{slug}`
+- Sitemap dizini: `https://gaffur.net/sitemap.xml`
+
+Ürün sayfaları yalnızca en az iki aktif teklif veya en az 30 günlük fiyat
+geçmişi varsa indekslenir. Teklif kapsamı Gaffur'un izlediği satıcılarla
+sınırlıdır; tüm satıcıları kapsadığı iddia edilmez. Gaffur doğrudan satış
+yapmaz ve doğrulanmamış yorum ya da puan üretmez.

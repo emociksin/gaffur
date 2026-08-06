@@ -707,6 +707,10 @@ api.post('/products', async (c) => {
 
 const PATCHABLE = new Set([
   'title',
+  'brand',
+  'gtin',
+  'mpn',
+  'sku',
   'category_id',
   'target_price',
   'alert_mode',
@@ -731,6 +735,15 @@ api.patch('/products/:id', async (c) => {
     else if (k === 'target_price') vals.push(v == null || v === '' || Number(v) <= 0 ? null : Number(v));
     else if (k === 'category_id') vals.push(v == null || v === '' ? null : Number(v));
     else if (k === 'active') vals.push(v ? 1 : 0);
+    else if (k === 'gtin') {
+      const value = String(v ?? '').trim();
+      if (value && !/^\d{8,14}$/.test(value)) return c.json({ error: 'GTIN 8-14 rakamdan olusmalidir' }, 400);
+      vals.push(value || null);
+    }
+    else if (k === 'brand' || k === 'mpn' || k === 'sku') {
+      const value = String(v ?? '').trim();
+      vals.push(value ? value.slice(0, 128) : null);
+    }
     else vals.push(v);
   }
   if (!sets.length) return c.json({ error: 'Değişiklik yok' }, 400);

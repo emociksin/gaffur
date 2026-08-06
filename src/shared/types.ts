@@ -22,6 +22,10 @@ export interface Product {
   site: string;
   title: string;
   image: string | null;
+  brand?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  sku?: string | null;
   currency: string;
   category_id: number | null;
   target_price: number | null;
