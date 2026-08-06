@@ -3,7 +3,7 @@ import type { Env } from '../env';
 import type { AppSettings, Engine, Product, ScrapeResult } from '../../shared/types';
 import { canonicalUrl, detectSite, discoverTrendyol, extractForSite } from './sites';
 import { fmtMoney } from './price';
-import { getSettings, insertNotification, now } from '../db';
+import { ensureOffer, getSettings, insertNotification, now, writeOfferSnapshot } from '../db';
 import { escTg, sendTelegram, tgLink } from '../telegram';
 import { readCapped, safeFetch, SsrfError } from './ssrf';
 
@@ -236,6 +236,19 @@ export async function applyPriceUpdate(
       .bind(p.id, price, r.listPrice ?? null, newStock, t)
       .run();
   }
+
+  // dual-write: offer + snapshot (Faz 2)
+  try {
+    const offerId = await ensureOffer(env, { id: p.id, url: p.url, site: p.site }, t);
+    const stockMap: Record<number, string> = { 1: 'in_stock', 0: 'out_of_stock' };
+    await writeOfferSnapshot(env, offerId, {
+      price,
+      listPrice: r.listPrice,
+      currency: p.currency ?? 'TRY',
+      stockStatus: newStock == null ? 'unknown' : (stockMap[newStock] ?? 'unknown'),
+      engine: r.engine,
+    }, t);
+  } catch { /* offer tablosu yoksa (eski DB) sessizce atla */ }
 
   let notified = false;
   const cur = p.currency || 'TRY';

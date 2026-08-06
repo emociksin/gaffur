@@ -56,6 +56,46 @@ export interface NotifInput {
   sent_telegram?: boolean;
 }
 
+// ---- offers (Faz 2: dual-write — product yazıldığında offer da yazılır) ----
+
+export async function ensureOffer(
+  env: Env,
+  product: { id: number; url: string; site: string },
+  t: number
+): Promise<number> {
+  const key = `${product.site}::${product.url}`;
+  const existing = await env.DB.prepare(
+    'SELECT id FROM offers WHERE canonical_offer_key = ?'
+  ).bind(key).first<{ id: number }>();
+  if (existing) return existing.id;
+
+  const res = await env.DB.prepare(
+    `INSERT INTO offers (product_id, marketplace, url, canonical_offer_key, first_seen_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(product.id, product.site, product.url, key, t, t).run();
+  return res.meta.last_row_id as number;
+}
+
+export async function writeOfferSnapshot(
+  env: Env,
+  offerId: number,
+  data: { price: number; listPrice?: number | null; currency?: string; stockStatus?: string; engine?: string },
+  t: number
+): Promise<void> {
+  await env.DB.prepare(
+    `INSERT INTO offer_snapshots (offer_id, price, list_price, currency, stock_status, engine, checked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    offerId,
+    data.price,
+    data.listPrice ?? null,
+    data.currency ?? 'TRY',
+    data.stockStatus ?? 'unknown',
+    data.engine ?? null,
+    t
+  ).run();
+}
+
 export async function insertNotification(env: Env, n: NotifInput): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO notifications (product_id, kind, title, body, old_price, new_price, sent_telegram, created_at)

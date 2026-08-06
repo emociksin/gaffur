@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env } from './env';
 import type { AppSettings, Product } from '../shared/types';
-import { getProduct, getSettings, insertNotification, now, setSetting, SETTINGS_DEFAULTS } from './db';
+import { ensureOffer, getProduct, getSettings, insertNotification, now, setSetting, SETTINGS_DEFAULTS, writeOfferSnapshot } from './db';
 import { checkSession, makeSession, rotateSessionSecret, safeEqual, SESSION_MAX_AGE_S } from './auth';
 import { checkProduct, directFetch, firecrawlScrape, refreshListing, scrapeUrl } from './scrape/engine';
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
@@ -484,6 +484,20 @@ api.post('/products', async (c) => {
       .bind(id, r.price, r.listPrice ?? null, r.inStock == null ? null : r.inStock ? 1 : 0, t)
       .run();
   }
+  // dual-write: offer + snapshot (Faz 2)
+  try {
+    const offerId = await ensureOffer(c.env, { id, url, site }, t);
+    if (r.ok && r.price != null) {
+      await writeOfferSnapshot(c.env, offerId, {
+        price: r.price,
+        listPrice: r.listPrice,
+        currency: r.currency ?? 'TRY',
+        stockStatus: r.inStock == null ? 'unknown' : r.inStock ? 'in_stock' : 'out_of_stock',
+        engine: r.engine,
+      }, t);
+    }
+  } catch { /* offer tablosu yoksa sessizce atla */ }
+
   const p = await getProduct(c.env, id);
   return c.json({ product: p, scrape: r });
 });
