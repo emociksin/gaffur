@@ -4,7 +4,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { Env } from './env';
 import type { AppSettings, Product } from '../shared/types';
 import { ensureOffer, getProduct, getSettings, insertNotification, now, setSetting, SETTINGS_DEFAULTS, writeOfferSnapshot } from './db';
-import { checkSession, makeSession, rotateSessionSecret, safeEqual, SESSION_MAX_AGE_S } from './auth';
+import { checkSession, generateSessionId, hashPassword, makeSession, rotateSessionSecret, safeEqual, SESSION_MAX_AGE_S, verifyPassword } from './auth';
 import { checkProduct, directFetch, firecrawlScrape, refreshListing, scrapeUrl } from './scrape/engine';
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
 import { detectChatId, sendTelegram } from './telegram';
@@ -847,6 +847,141 @@ api.get('/export/history.csv', async (c) => {
       'content-disposition': `attachment; filename="gaffur-gecmis-${pid}.csv"`,
     },
   });
+});
+
+// ---- kullanıcı hesap sistemi (Faz 2) ----
+
+const USER_SESSION_COOKIE = 'gfr_u';
+const USER_SESSION_COOKIE_HOST = '__Host-gfr_u';
+const userCookieName = (c: { req: { url: string } }) => (isHttps(c) ? USER_SESSION_COOKIE_HOST : USER_SESSION_COOKIE);
+const readUserCookie = (c: Parameters<typeof getCookie>[0]) =>
+  getCookie(c, USER_SESSION_COOKIE_HOST) ?? getCookie(c, USER_SESSION_COOKIE);
+
+async function getUserFromSession(env: Env, cookie: string | undefined | null): Promise<{ id: number; email: string; role: string } | null> {
+  if (!cookie) return null;
+  const t = now();
+  const row = await env.DB.prepare(
+    'SELECT u.id, u.email, u.role FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.id = ? AND s.expires_at > ?'
+  ).bind(cookie, t).first<{ id: number; email: string; role: string }>();
+  return row ?? null;
+}
+
+api.post('/auth/register', async (c) => {
+  const body = await c.req.json<{ email?: string; password?: string; display_name?: string; kvkk_consent?: boolean }>().catch(() => ({}) as any);
+  const email = String(body.email ?? '').trim().toLowerCase();
+  const password = String(body.password ?? '');
+  if (!email || !/@/.test(email)) return c.json({ error: 'Geçerli bir e-posta adresi gerekli' }, 400);
+  if (password.length < 8) return c.json({ error: 'Parola en az 8 karakter olmalı' }, 400);
+  if (!body.kvkk_consent) return c.json({ error: 'KVKK aydınlatma metnini onaylamanız gerekli' }, 400);
+
+  const existing = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+  if (existing) return c.json({ error: 'Bu e-posta ile zaten bir hesap var' }, 409);
+
+  const t = now();
+  const hash = await hashPassword(password);
+  const res = await c.env.DB.prepare(
+    `INSERT INTO users (email, password_hash, display_name, role, kvkk_consent, kvkk_consent_at, created_at)
+     VALUES (?, ?, ?, 'user', 1, ?, ?)`
+  ).bind(email, hash, body.display_name ?? null, t, t).run();
+  const userId = res.meta.last_row_id as number;
+
+  const sessionId = generateSessionId();
+  const expiresAt = t + SESSION_MAX_AGE_S;
+  await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(sessionId, userId, expiresAt, t).run();
+
+  setCookie(c, userCookieName(c), sessionId, {
+    httpOnly: true,
+    secure: isHttps(c),
+    sameSite: 'Strict',
+    path: '/',
+    maxAge: SESSION_MAX_AGE_S,
+  });
+  return c.json({ ok: true, userId });
+});
+
+api.post('/auth/login', async (c) => {
+  const body = await c.req.json<{ email?: string; password?: string }>().catch(() => ({}) as any);
+  const email = String(body.email ?? '').trim().toLowerCase();
+  const password = String(body.password ?? '');
+  if (!email || !password) return c.json({ error: 'E-posta ve parola gerekli' }, 400);
+
+  const ip = clientIp(c);
+  const limited = await hitRateLimit(c.env, ip);
+  if (limited) return c.json({ error: `Çok fazla deneme. ${limited} saniye sonra tekrar dene.` }, 429, { 'retry-after': String(limited) });
+
+  const user = await c.env.DB.prepare('SELECT id, password_hash, role FROM users WHERE email = ?').bind(email).first<{ id: number; password_hash: string; role: string }>();
+  await new Promise((r) => setTimeout(r, 350));
+  if (!user || !(await verifyPassword(user.password_hash, password))) return c.json({ error: 'E-posta veya parola yanlış' }, 401);
+
+  await clearRateLimit(c.env, ip);
+  const t = now();
+  const sessionId = generateSessionId();
+  await c.env.DB.prepare('INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').bind(sessionId, user.id, t + SESSION_MAX_AGE_S, t).run();
+
+  setCookie(c, userCookieName(c), sessionId, {
+    httpOnly: true,
+    secure: isHttps(c),
+    sameSite: 'Strict',
+    path: '/',
+    maxAge: SESSION_MAX_AGE_S,
+  });
+  return c.json({ ok: true, userId: user.id, role: user.role });
+});
+
+api.post('/auth/logout', async (c) => {
+  const sid = readUserCookie(c);
+  if (sid) await c.env.DB.prepare('DELETE FROM sessions WHERE id = ?').bind(sid).run();
+  deleteCookie(c, USER_SESSION_COOKIE_HOST, { path: '/' });
+  deleteCookie(c, USER_SESSION_COOKIE, { path: '/' });
+  return c.json({ ok: true });
+});
+
+api.get('/auth/me', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ authed: false });
+  return c.json({ authed: true, user: { id: user.id, email: user.email, role: user.role } });
+});
+
+// ---- watches (kullanıcı takip listesi) ----
+
+api.get('/watches', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const rows = await c.env.DB.prepare(
+    `SELECT w.*, p.title, p.site, p.current_price, p.currency, p.in_stock, p.image
+     FROM watches w JOIN products p ON p.id = w.product_id
+     WHERE w.user_id = ? AND w.active = 1 ORDER BY w.created_at DESC`
+  ).bind(user.id).all();
+  return c.json({ watches: rows.results ?? [] });
+});
+
+api.post('/watches', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const body = await c.req.json<{ product_id?: number; target_price?: number; threshold_pct?: number }>().catch(() => ({}) as any);
+  const productId = Number(body.product_id);
+  if (!productId) return c.json({ error: 'product_id gerekli' }, 400);
+
+  const product = await c.env.DB.prepare('SELECT id FROM products WHERE id = ?').bind(productId).first();
+  if (!product) return c.json({ error: 'Ürün bulunamadı' }, 404);
+
+  const existing = await c.env.DB.prepare('SELECT id FROM watches WHERE user_id = ? AND product_id = ?').bind(user.id, productId).first();
+  if (existing) return c.json({ error: 'Bu ürün zaten takip listende' }, 409);
+
+  const t = now();
+  const res = await c.env.DB.prepare(
+    `INSERT INTO watches (user_id, product_id, target_price, threshold_pct, created_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).bind(user.id, productId, body.target_price ?? null, body.threshold_pct ?? 0, t).run();
+  return c.json({ ok: true, watchId: res.meta.last_row_id });
+});
+
+api.delete('/watches/:id', async (c) => {
+  const user = await getUserFromSession(c.env, readUserCookie(c));
+  if (!user) return c.json({ error: 'Oturum gerekli' }, 401);
+  const id = Number(c.req.param('id'));
+  await c.env.DB.prepare('DELETE FROM watches WHERE id = ? AND user_id = ?').bind(id, user.id).run();
+  return c.json({ ok: true });
 });
 
 export default api;

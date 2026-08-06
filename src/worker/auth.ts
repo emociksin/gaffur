@@ -104,3 +104,22 @@ export async function checkSession(env: Env, cookie: string | undefined | null):
 }
 
 export const SESSION_MAX_AGE_S = MAX_AGE_MS / 1000;
+
+// ---- çok-kullanıcılı hesap sistemi (Faz 2) ----
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomHex(16);
+  const hash = await sha256Hex(salt + password);
+  return `${salt}:${hash}`;
+}
+
+export async function verifyPassword(stored: string, given: string): Promise<boolean> {
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  const attempt = await sha256Hex(salt + given);
+  return eqHex(hash, attempt);
+}
+
+export function generateSessionId(): string {
+  return randomHex(32);
+}
