@@ -56,6 +56,16 @@ gözlemde doğrulanır. `unknown` geçiş değildir, üç ardışık unknown `pa
 açar. Fiyat referansı önceki tek fiyat değil 30 günlük medyandır; %2 altı hareket
 bildirim gürültüsü sayılır. Stok dışı fiyatlar baseline, extrema ve fırsat hesabına girmez.
 
+Faz 5 lojistik/maliyet katmanı `src/worker/intelligence/landed-cost.ts` ve
+`migrations/0012_phase5_landed_cost.sql` / `0009_phase5_landed_cost.pg.sql` içindedir.
+Kargo ve açık taksit sayısı parser çıktısından offer snapshot'a yazılır; ayrıntılı manuel
+seçenekler `shipping_quotes` ve `installment_options` tablolarındadır. Vergi kuralları
+kaynak/tarih ile versiyonlanır, kaydedilen hesap `rule_code` tutar. Kritik mevzuat
+gerçeği: 6 Şubat 2026 sonrası genel posta e-ticaret ürününe %30/%60 doğrudan uygulanmaz;
+ürün detaylı beyana tabidir ve GTİP olmadan kesin vergi hesaplanmaz. Bu oranlar uygun
+ilaç/takviye ve yolcu senaryolarında geçerlidir. Kaynak kaydı:
+`docs/phase5-legal-sources.md`.
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık

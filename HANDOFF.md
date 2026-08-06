@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 4 Tamamlandı, Faz 5 Sırada
+# Gaffur Handoff — Faz 5 Tamamlandı, Faz 6 Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (64 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok zekâsı), GitHub Actions CI
+- **Test:** Vitest (73 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -71,7 +71,7 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 5
+## Sıradaki İş — Faz 6
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -112,14 +112,21 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 - [x] Stok dışı fiyatları baseline, extrema ve fırsat hesabından çıkarma
 - [x] Baseline ve stok parser durumunu ürün detay API/UI'ında gösterme
 
-### Faz 5 — Kargo, Taksit, Landed Cost **← sıradaki**
-- [ ] Güncel gümrük mevzuatını birincil resmi kaynaktan doğrula; oranları kaynak/tarih ile versiyonla
-- [ ] Kargo teklifleri ve taksit seçenekleri veri modeli + API
-- [ ] Kur/vergiler/kargo dahil toplam maliyet hesaplama motoru
-- [ ] Ürün detayında şeffaf maliyet dökümü ve belirsizlik uyarısı
+### Faz 5 — Kargo, Taksit, Landed Cost ✅
+- [x] Güncel mevzuat Ticaret Bakanlığı birincil açıklamalarından doğrulandı; planın genel ürüne %30/%60 varsayımı düzeltildi
+- [x] `shipping_quotes`, `installment_options`, `tax_rules`, `landed_cost_quotes` çift DB şeması
+- [x] JSON-LD/metinden kargo ücreti ve açık taksit sayısı çıkarımı; offer snapshot dual-write
+- [x] Yurtiçi, posta ve 430 Avro yolcu senaryolu maliyet motoru; kur ve kullanılan kural görünür
+- [x] Genel posta ürününde GTİP yoksa rakam uydurmak yerine detaylı beyan/belirsiz toplam
+- [x] Ürün detayında mevcut tasarım diliyle maliyet hesaplayıcı, kargo ve taksit görünümü
+- [x] Yönetici lojistik girişi ve mevzuat-kodlu maliyet snapshot API'ı
 
-### Faz 6-8 Özet
-- **Faz 6:** Public SSR + SEO (ürün sayfaları, JSON-LD, sitemap)
+### Faz 6 — Public SSR + SEO **← sıradaki**
+- [ ] Ürün sayfalarını sunucudan HTML olarak üret; istemci SPA yönetimini koru
+- [ ] Product + AggregateOffer JSON-LD, görünür fiyat geçmişi tablosu
+- [ ] Sitemap segmentasyonu, canonical/noindex kuralları ve ürün JSON uçları
+
+### Faz 7-8 Özet
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
 - **Faz 8:** Katalog + ürün eşleştirme (Python servisi, Scrapy, embedding)
 
@@ -140,7 +147,7 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (60 test)
+npm test           # vitest (73 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```
@@ -148,7 +155,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ## Bilinen Sorunlar / Dikkat
 
 - **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
-- **Gümrük oranları henüz teyit edilmedi** (Faz 5 başlamadan resmi metin okunacak; tahmin oran yazılmayacak)
+- **Genel yurtdışı ürünün vergisi GTİP olmadan hesaplanamaz:** UI bilinmeyen vergi/masrafı kesin toplam gibi göstermez
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
 

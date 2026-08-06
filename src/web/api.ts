@@ -5,12 +5,15 @@ import type {
   DiscoveredItem,
   HistoryPoint,
   Notification,
+  OfferSummary,
   PriceBaseline,
   Product,
   ScrapeResult,
   StockTransition,
   Summary,
   Watch,
+  LandedCostInput,
+  LandedCostResult,
 } from '../shared/types';
 
 export class ApiError extends Error {
@@ -87,7 +90,10 @@ export const api = {
       baseline: PriceBaseline | null;
       stockState: { unknown_streak: number; parser_error: number } | null;
       stockTransitions: StockTransition[];
+      offers: OfferSummary[];
     }>(`/products/${id}?days=${days}`),
+  calculateLandedCost: (body: LandedCostInput) =>
+    req<{ result: LandedCostResult }>('/landed-cost/calculate', { method: 'POST', body: JSON.stringify(body) }),
   preview: (url: string) =>
     req<{ type: 'product' | 'listing'; result?: ScrapeResult; items?: DiscoveredItem[]; error?: string }>('/preview', {
       method: 'POST',

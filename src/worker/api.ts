@@ -8,6 +8,7 @@ import { checkSession, generateSessionId, hashPassword, makeSession, rotateSessi
 import { checkProduct, crawleeScrape, directFetch, refreshListing, scrapeUrl } from './scrape/engine';
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
 import { detectChatId, sendTelegram } from './telegram';
+import { calculateLandedCost, type LandedCostInput } from './intelligence/landed-cost';
 
 const api = new Hono<{ Bindings: Env }>();
 
@@ -87,6 +88,8 @@ const PUBLIC_READS: RegExp[] = [
   /^\/api\/products$/,
   /^\/api\/products\/\d+$/,
   /^\/api\/categories$/,
+  /^\/api\/offers\/\d+\/logistics$/,
+  /^\/api\/tax-rules$/,
 ];
 const isPublicRead = (method: string, path: string) =>
   method === 'GET' && PUBLIC_READS.some((r) => r.test(path));
@@ -99,7 +102,7 @@ const isPublicRead = (method: string, path: string) =>
  * Silme, duzenleme, ayarlar ve bildirimler ziyaretciye KAPALI kalir.
  */
 const isPublicWrite = (method: string, path: string) =>
-  method === 'POST' && (path === '/api/products' || path === '/api/preview');
+  method === 'POST' && (path === '/api/products' || path === '/api/preview' || path === '/api/landed-cost/calculate');
 
 // ---- ziyaretci hiz siniri ----
 const ADD_PER_IP = 10; // saatte, IP basina eklenebilecek urun
@@ -342,7 +345,7 @@ api.get('/products/:id', async (c) => {
   )
     .bind(id)
     .all();
-  const [baseline, stockState, stockTransitions] = await Promise.all([
+  const [baseline, stockState, stockTransitions, offers] = await Promise.all([
     c.env.DB.prepare('SELECT * FROM price_baselines WHERE product_id = ?').bind(id).first(),
     c.env.DB.prepare(
       `SELECT confirmed_status, candidate_status, candidate_count, unknown_streak, parser_error,
@@ -353,6 +356,21 @@ api.get('/products/:id', async (c) => {
       `SELECT id, product_id, from_status, to_status, confirmed_at, observation_count
        FROM stock_transitions WHERE product_id = ? ORDER BY confirmed_at DESC LIMIT 20`
     ).bind(id).all(),
+    c.env.DB.prepare(
+      `SELECT o.id, o.marketplace, o.seller_name, o.url, o.origin_country, o.origin_region,
+              (SELECT os.price FROM offer_snapshots os WHERE os.offer_id = o.id ORDER BY checked_at DESC LIMIT 1) AS price,
+              (SELECT os.currency FROM offer_snapshots os WHERE os.offer_id = o.id ORDER BY checked_at DESC LIMIT 1) AS currency,
+              COALESCE(
+                (SELECT sq.cost FROM shipping_quotes sq WHERE sq.offer_id = o.id ORDER BY captured_at DESC LIMIT 1),
+                (SELECT os.shipping_cost FROM offer_snapshots os WHERE os.offer_id = o.id ORDER BY checked_at DESC LIMIT 1)
+              ) AS shipping_cost,
+              COALESCE(
+                (SELECT MAX(io.installment_count) FROM installment_options io
+                 WHERE io.offer_id = o.id AND io.captured_at = (SELECT MAX(captured_at) FROM installment_options WHERE offer_id = o.id)),
+                (SELECT os.installment_count FROM offer_snapshots os WHERE os.offer_id = o.id ORDER BY checked_at DESC LIMIT 1)
+              ) AS max_installments
+       FROM offers o WHERE o.product_id = ? AND o.active = 1 ORDER BY o.id ASC`
+    ).bind(id).all(),
   ]);
   return c.json({
     product: p,
@@ -361,7 +379,160 @@ api.get('/products/:id', async (c) => {
     baseline,
     stockState,
     stockTransitions: stockTransitions.results ?? [],
+    offers: offers.results ?? [],
   });
+});
+
+// ---- Faz 5: kargo, taksit ve kapıdaki maliyet ----
+api.get('/tax-rules', async (c) => {
+  const rules = await c.env.DB.prepare(
+    `SELECT rule_code, scenario, origin_region, product_kind, customs_rate, additional_rate,
+            exemption_eur, max_value_eur, max_weight_kg, requires_detailed_declaration,
+            prohibited, effective_from, effective_to, source_title, source_url, verified_at
+     FROM tax_rules ORDER BY scenario, product_kind, origin_region`
+  ).all();
+  return c.json({ rules: rules.results ?? [] });
+});
+
+api.post('/landed-cost/calculate', async (c) => {
+  const wait = await limitHit(c.env, `landed:${clientIp(c)}`, 120, 3600);
+  if (wait) return c.json({ error: `Çok fazla hesaplama yaptın. ${dakika(wait)} dakika sonra tekrar dene.` }, 429);
+  const body = await c.req.json<LandedCostInput>().catch(() => null);
+  if (!body) return c.json({ error: 'Geçerli hesaplama verisi gerekli' }, 400);
+  try {
+    const result = await calculateLandedCost(c.env, body, now());
+    return c.json({ result });
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, 400);
+  }
+});
+
+api.get('/offers/:id/logistics', async (c) => {
+  const id = Number(c.req.param('id'));
+  const offer = await c.env.DB.prepare(
+    `SELECT id, product_id, marketplace, seller_name, url, origin_country, origin_region
+     FROM offers WHERE id = ?`
+  ).bind(id).first();
+  if (!offer) return c.json({ error: 'Teklif bulunamadı' }, 404);
+  const [shipping, installments, landedCost] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT * FROM shipping_quotes WHERE offer_id = ? ORDER BY captured_at DESC, id DESC LIMIT 1`
+    ).bind(id).first(),
+    c.env.DB.prepare(
+      `SELECT * FROM installment_options
+       WHERE offer_id = ? AND captured_at = (SELECT MAX(captured_at) FROM installment_options WHERE offer_id = ?)
+       ORDER BY installment_count ASC`
+    ).bind(id, id).all(),
+    c.env.DB.prepare(
+      `SELECT id, rule_code, status, currency, fx_rate_try, eur_try_rate, item_try, shipping_try,
+              tax_try, known_subtotal_try, total_try, breakdown_json, calculated_at
+       FROM landed_cost_quotes WHERE offer_id = ? ORDER BY calculated_at DESC, id DESC LIMIT 1`
+    ).bind(id).first(),
+  ]);
+  return c.json({ offer, shipping, installments: installments.results ?? [], landedCost });
+});
+
+api.post('/offers/:id/landed-cost', async (c) => {
+  const id = Number(c.req.param('id'));
+  const exists = await c.env.DB.prepare('SELECT id FROM offers WHERE id = ?').bind(id).first();
+  if (!exists) return c.json({ error: 'Teklif bulunamadı' }, 404);
+  const body = await c.req.json<LandedCostInput>().catch(() => null);
+  if (!body) return c.json({ error: 'Geçerli hesaplama verisi gerekli' }, 400);
+  try {
+    const t = now();
+    const result = await calculateLandedCost(c.env, body, t);
+    const saved = await c.env.DB.prepare(
+      `INSERT INTO landed_cost_quotes
+       (offer_id, rule_code, status, currency, fx_rate_try, eur_try_rate, item_try, shipping_try,
+        tax_try, known_subtotal_try, total_try, input_json, breakdown_json, calculated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      result.rule.rule_code,
+      result.status,
+      body.currency,
+      body.fxRateTry,
+      body.eurTryRate,
+      result.itemTry,
+      result.shippingTry + result.assumedFreightTry,
+      result.taxTry,
+      result.knownSubtotalTry,
+      result.totalTry,
+      JSON.stringify(body),
+      JSON.stringify(result),
+      t
+    ).run();
+    return c.json({ id: saved.meta.last_row_id, result });
+  } catch (error: any) {
+    return c.json({ error: String(error?.message ?? error) }, 400);
+  }
+});
+
+api.put('/offers/:id/logistics', async (c) => {
+  const id = Number(c.req.param('id'));
+  const exists = await c.env.DB.prepare('SELECT id FROM offers WHERE id = ?').bind(id).first();
+  if (!exists) return c.json({ error: 'Teklif bulunamadı' }, 404);
+  const body = await c.req.json<any>().catch(() => null);
+  if (!body) return c.json({ error: 'Geçerli lojistik verisi gerekli' }, 400);
+  const region = ['domestic', 'eu', 'other'].includes(body.origin_region) ? body.origin_region : 'domestic';
+  const t = now();
+  const shippingCost = body.shipping ? Number(body.shipping.cost) : null;
+  if (shippingCost != null && (!Number.isFinite(shippingCost) || shippingCost < 0)) {
+    return c.json({ error: 'Geçersiz kargo tutarı' }, 400);
+  }
+  const installmentRows = Array.isArray(body.installments) ? body.installments.slice(0, 30) : [];
+  for (const option of installmentRows) {
+    const count = Number(option.installment_count);
+    const monthly = Number(option.monthly_amount);
+    const total = Number(option.total_amount);
+    if (!Number.isInteger(count) || count < 1 || !Number.isFinite(monthly) || monthly < 0 || !Number.isFinite(total) || total < 0) {
+      return c.json({ error: 'Geçersiz taksit seçeneği' }, 400);
+    }
+  }
+  await c.env.DB.prepare('UPDATE offers SET origin_country = ?, origin_region = ? WHERE id = ?')
+    .bind(body.origin_country ?? null, region, id).run();
+
+  if (body.shipping) {
+    await c.env.DB.prepare(
+      `INSERT INTO shipping_quotes
+       (offer_id, destination_country, cost, currency, free_shipping_threshold,
+        min_delivery_days, max_delivery_days, source, captured_at)
+       VALUES (?, 'TR', ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      id,
+      shippingCost,
+      body.shipping.currency ?? 'TRY',
+      body.shipping.free_shipping_threshold ?? null,
+      body.shipping.min_delivery_days ?? null,
+      body.shipping.max_delivery_days ?? null,
+      body.shipping.source ?? 'manual',
+      t
+    ).run();
+  }
+
+  if (installmentRows.length) {
+    for (const option of installmentRows) {
+      const count = Number(option.installment_count);
+      const monthly = Number(option.monthly_amount);
+      const total = Number(option.total_amount);
+      await c.env.DB.prepare(
+        `INSERT INTO installment_options
+         (offer_id, provider, card_family, installment_count, monthly_amount, total_amount, currency, interest_rate, captured_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        id,
+        option.provider ?? null,
+        option.card_family ?? null,
+        count,
+        monthly,
+        total,
+        option.currency ?? 'TRY',
+        option.interest_rate ?? null,
+        t
+      ).run();
+    }
+  }
+  return c.json({ ok: true, capturedAt: t });
 });
 
 // URL onizleme (kaydetmeden once ne bulundugunu goster) — ziyaretciye acik, sinirli
@@ -522,6 +693,8 @@ api.post('/products', async (c) => {
         listPrice: r.listPrice,
         currency: r.currency ?? 'TRY',
         stockStatus: r.inStock == null ? 'unknown' : r.inStock ? 'in_stock' : 'out_of_stock',
+        shippingCost: r.shippingCost,
+        installmentCount: r.installmentCount,
         engine: r.engine,
         parserVersion: r.parserVersion,
       }, t);

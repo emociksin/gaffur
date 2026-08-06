@@ -77,6 +77,8 @@ export async function scrapeUrl(rawUrl: string, engine: Engine): Promise<ScrapeR
           listPrice: ext.listPrice,
           currency: ext.currency ?? 'TRY',
           inStock: ext.inStock,
+          shippingCost: ext.shippingCost,
+          installmentCount: ext.installmentCount,
         };
       }
       blocked = Boolean((ext as any).blocked) || looksBlocked(status, html);
@@ -113,6 +115,8 @@ export async function scrapeUrl(rawUrl: string, engine: Engine): Promise<ScrapeR
           listPrice: ext.listPrice,
           currency: ext.currency ?? 'TRY',
           inStock: ext.inStock,
+          shippingCost: ext.shippingCost,
+          installmentCount: ext.installmentCount,
         };
       }
       directNote = looksBlocked(status, html) ? 'Crawlee bot koruması' : `Crawlee fiyat bulamadı (HTTP ${status})`;
@@ -261,7 +265,7 @@ export async function applyPriceUpdate(
   env: Env,
   settings: AppSettings,
   p: Product,
-  r: { price: number; listPrice?: number | null; inStock?: boolean | null; engine: string; parserVersion?: string; title?: string; image?: string },
+  r: { price: number; listPrice?: number | null; inStock?: boolean | null; shippingCost?: number | null; installmentCount?: number | null; engine: string; parserVersion?: string; title?: string; image?: string },
   t: number
 ): Promise<CheckOutcome> {
   const oldPrice = p.current_price;
@@ -324,6 +328,8 @@ export async function applyPriceUpdate(
       listPrice: r.listPrice,
       currency: p.currency ?? 'TRY',
       stockStatus: newStock == null ? 'unknown' : (stockMap[newStock] ?? 'unknown'),
+      shippingCost: r.shippingCost,
+      installmentCount: r.installmentCount,
       engine: r.engine,
       parserVersion: r.parserVersion,
     }, t);
@@ -436,6 +442,8 @@ export async function checkProduct(env: Env, p: Product, settings?: AppSettings)
       price: r.price,
       listPrice: r.listPrice ?? null,
       inStock: r.inStock ?? null,
+      shippingCost: r.shippingCost ?? null,
+      installmentCount: r.installmentCount ?? null,
       engine: r.engine ?? 'direct',
       parserVersion: r.parserVersion,
       title: r.title,

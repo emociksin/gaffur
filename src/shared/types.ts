@@ -68,6 +68,58 @@ export interface StockTransition {
   observation_count: number;
 }
 
+export interface OfferSummary {
+  id: number;
+  marketplace: string;
+  seller_name: string | null;
+  url: string;
+  origin_country: string | null;
+  origin_region: 'domestic' | 'eu' | 'other';
+  price: number | null;
+  currency: string | null;
+  shipping_cost: number | null;
+  max_installments: number | null;
+}
+
+export interface LandedCostInput {
+  scenario: 'domestic' | 'postal' | 'passenger';
+  originRegion: 'domestic' | 'eu' | 'other';
+  productKind: 'general' | 'book' | 'health' | 'phone';
+  itemPrice: number;
+  shippingCost?: number;
+  currency: string;
+  fxRateTry: number;
+  eurTryRate: number;
+  weightKg?: number | null;
+  freightDocumented?: boolean;
+  nonCommercial?: boolean;
+  hasPrescription?: boolean;
+  isOtvList4?: boolean;
+  passengerAge?: number;
+}
+
+export interface LandedCostResult {
+  status: 'calculated' | 'requires_detailed_declaration' | 'not_eligible' | 'prohibited';
+  rule: {
+    rule_code: string;
+    customs_rate: number | null;
+    additional_rate: number;
+    source_title: string;
+    source_url: string;
+    effective_from: number;
+    verified_at: number;
+  };
+  itemTry: number;
+  shippingTry: number;
+  assumedFreightTry: number;
+  taxableTry: number;
+  taxTry: number | null;
+  knownSubtotalTry: number;
+  totalTry: number | null;
+  effectiveRate: number | null;
+  warnings: string[];
+}
+
 export interface HistoryPoint {
   price: number;
   list_price: number | null;
@@ -127,6 +179,8 @@ export interface ScrapeResult {
   listPrice?: number;
   currency?: string;
   inStock?: boolean;
+  shippingCost?: number;
+  installmentCount?: number;
   engine?: string;
   parserVersion?: string;
   error?: string;

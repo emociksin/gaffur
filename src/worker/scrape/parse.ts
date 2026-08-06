@@ -8,6 +8,8 @@ export interface Extracted {
   listPrice?: number;
   currency?: string;
   inStock?: boolean;
+  shippingCost?: number;
+  installmentCount?: number;
 }
 
 // ---- yardimcilar ----
@@ -135,7 +137,32 @@ export function extractJsonLd(html: string): Extracted | null {
     if (typeof offers.priceCurrency === 'string') out.currency = detectCurrency(offers.priceCurrency);
     const av = String(offers.availability ?? '');
     if (av) out.inStock = /instock|limitedavailability|preorder/i.test(av);
+    let shipping = offers.shippingDetails;
+    if (Array.isArray(shipping)) shipping = shipping[0];
+    const shippingRate = shipping?.shippingRate;
+    const rawShipping = typeof shippingRate === 'object' ? shippingRate?.value : shippingRate;
+    const parsedShipping = sanePrice(parsePrice(rawShipping));
+    if (parsedShipping != null) out.shippingCost = parsedShipping;
   }
+  return out;
+}
+
+export function extractLogistics(html: string): Pick<Extracted, 'shippingCost' | 'installmentCount'> {
+  const out: Pick<Extracted, 'shippingCost' | 'installmentCount'> = {};
+  if (/ücretsiz\s+kargo|kargo\s+bedava|free\s+shipping/i.test(html)) out.shippingCost = 0;
+  if (out.shippingCost == null) {
+    const shipping = html.match(/(?:kargo(?:\s+ücreti|\s+bedeli)?|shipping)[^\d₺]{0,80}([\d][\d.,]{0,12})\s*(?:TL|₺)/i);
+    const parsed = sanePrice(parsePrice(shipping?.[1]));
+    if (parsed != null) out.shippingCost = parsed;
+  }
+  const counts: number[] = [];
+  const installments = html.matchAll(/\b(\d{1,2})\s*(?:aya\s+varan\s+)?taksit\b/gi);
+  for (const match of installments) {
+    const count = Number(match[1]);
+    if (count >= 2 && count <= 36) counts.push(count);
+    if (counts.length >= 30) break;
+  }
+  if (counts.length) out.installmentCount = Math.max(...counts);
   return out;
 }
 
@@ -215,6 +242,7 @@ export function extractContextualPrice(html: string): number | null {
 export function extractGeneric(html: string): Extracted {
   const ld = extractJsonLd(html) ?? {};
   const meta = extractMeta(html);
+  const logistics = extractLogistics(html);
   const out: Extracted = {
     title: ld.title ?? meta.title,
     image: ld.image ?? meta.image,
@@ -222,6 +250,8 @@ export function extractGeneric(html: string): Extracted {
     listPrice: ld.listPrice ?? meta.listPrice,
     currency: ld.currency ?? meta.currency,
     inStock: ld.inStock ?? meta.inStock,
+    shippingCost: ld.shippingCost ?? logistics.shippingCost,
+    installmentCount: ld.installmentCount ?? logistics.installmentCount,
   };
   if (out.price == null) out.price = extractEmbeddedPrice(html) ?? undefined;
   if (out.price == null) out.price = extractContextualPrice(html) ?? undefined;

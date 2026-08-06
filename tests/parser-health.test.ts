@@ -20,10 +20,10 @@ describe('parser registry ve sağlık alarmı', () => {
   });
 
   it('siteye kararlı parser sürümü atar', () => {
-    expect(parserVersionFor('trendyol')).toBe('trendyol-2026.08.1');
-    expect(parserVersionFor('magaza.test')).toBe('generic-2026.08.1');
+    expect(parserVersionFor('trendyol')).toBe('trendyol-2026.08.2');
+    expect(parserVersionFor('magaza.test')).toBe('generic-2026.08.2');
     expect(parseWithRegistry('magaza.test', '<script type="application/ld+json">{"@type":"Product","offers":{"price":99}}</script>'))
-      .toEqual(expect.objectContaining({ parserVersion: 'generic-2026.08.1', data: expect.objectContaining({ price: 99 }) }));
+      .toEqual(expect.objectContaining({ parserVersion: 'generic-2026.08.2', data: expect.objectContaining({ price: 99 }) }));
   });
 
   it('10 örnekte yüzde 50+ hata için saatlik tek alarm üretir', async () => {

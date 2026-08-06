@@ -80,18 +80,20 @@ export async function ensureOffer(
 export async function writeOfferSnapshot(
   env: Env,
   offerId: number,
-  data: { price: number; listPrice?: number | null; currency?: string; stockStatus?: string; engine?: string; parserVersion?: string },
+  data: { price: number; listPrice?: number | null; currency?: string; stockStatus?: string; shippingCost?: number | null; installmentCount?: number | null; engine?: string; parserVersion?: string },
   t: number
 ): Promise<void> {
   await env.DB.prepare(
-    `INSERT INTO offer_snapshots (offer_id, price, list_price, currency, stock_status, engine, parser_version, checked_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO offer_snapshots (offer_id, price, list_price, currency, stock_status, shipping_cost, installment_count, engine, parser_version, checked_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).bind(
     offerId,
     data.price,
     data.listPrice ?? null,
     data.currency ?? 'TRY',
     data.stockStatus ?? 'unknown',
+    data.shippingCost ?? null,
+    data.installmentCount ?? null,
     data.engine ?? null,
     data.parserVersion ?? null,
     t

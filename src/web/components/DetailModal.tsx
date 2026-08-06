@@ -1,10 +1,11 @@
 // Urun detayi: buyuk grafik, istatistikler, ayarlar, gecmis
 import { useCallback, useEffect, useState } from 'react';
-import type { Category, HistoryPoint, Notification, PriceBaseline, Product, StockTransition } from '../../shared/types';
+import type { Category, HistoryPoint, Notification, OfferSummary, PriceBaseline, Product, StockTransition } from '../../shared/types';
 import { api } from '../api';
 import { dateFull, money, pctFmt, timeAgo } from '../format';
 import { PriceChart } from './Chart';
 import { IconCheck, IconDownload, IconExternal, IconRefresh, IconTrash, Modal, SiteBadge, Spinner, useIsAdmin, useToast } from '../ui';
+import { LandedCostPanel } from './LandedCostPanel';
 
 const RANGES: [number, string][] = [
   [7, '7g'],
@@ -34,6 +35,7 @@ export function DetailModal({
     baseline: PriceBaseline | null;
     stockState: { unknown_streak: number; parser_error: number } | null;
     stockTransitions: StockTransition[];
+    offers: OfferSummary[];
   } | null>(null);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -235,6 +237,8 @@ export function DetailModal({
         </div>
       </div>
       <PriceChart points={hist} currency={p.currency} targetPrice={p.target_price} />
+
+      <LandedCostPanel price={p.current_price} currency={p.currency} offers={data.offers} />
 
       {/* Takip ayarlari ve bildirim gecmisi yalnizca yoneticiye gorunur */}
       {isAdmin && (

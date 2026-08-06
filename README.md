@@ -4,7 +4,8 @@ Fiyatları senin yerine kollar. Trendyol, Hepsiburada, Amazon, N11 ve diğer sit
 ürünleri takibe alırsın; Gaffur fiyatları düzenli kontrol eder, düşünce Telegram'dan
 haber verir, geçmişi grafikle gösterir.
 
-**Altyapı:** Cloudflare Workers + D1 + Cron Trigger — sunucu yok, ücretsiz katman yeterli.
+**Altyapı:** Node.js 24 + Hono + React/Vite; SQLite veya `DATABASE_URL` ile Postgres.
+Docker/Coolify üzerinde çalışır.
 
 ## Özellikler
 
@@ -16,36 +17,30 @@ haber verir, geçmişi grafikle gösterir.
 - **Bildirimler:** Fiyat düşüşü, hedef fiyata iniş, stok değişimi, yeni ürün — uygulama
   içi + Telegram. Ürün başına mod ve % eşiği seçilebilir.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
+- **Fiyat/stok zekâsı:** 30/90 günlük medyan, 10 günlük en düşük, %2 gürültü filtresi;
+  stok değişiminde iki ardışık doğrulama ve `unknown` güvenliği.
+- **Kapıdaki maliyet:** Kargo/taksit verisi; yurtiçi, posta ve yolcu beraberinde maliyet
+  senaryoları. Mevzuat kaynağı ve kullanılan kur görünür, GTİP bilinmiyorsa kesin vergi uydurulmaz.
 - **Kontrol sıklığı:** Ürün başına 15 dk – 24 saat; "Şimdi Kontrol Et" ile anlık tarama.
 - **Crawlee fallback:** Bot koruması olan sitelerde yerleşik CheerioCrawler transport'u
   eklenir; önce her zaman ücretsiz doğrudan erişim denenir.
-- **Güvenlik:** Tek parola (Cloudflare secret), HMAC imzalı oturum çerezi.
+- **Güvenlik:** Yönetici parolası, ayrı imza anahtarlı oturum çerezi ve kullanıcı hesapları.
 
 ## Lokal Çalıştırma
 
 ```bash
 npm install
-npm run db:local     # yerel D1 şemasını kur (ilk sefer)
-npm start            # build + wrangler dev → http://localhost:8787
+npm start            # migration + build + Node sunucu → http://localhost:8787
 ```
 
-Yerelde parola istemez: proje kökündeki `.dev.vars` dosyasında `ALLOW_OPEN=1` yazdığı için
-açık modda çalışır. Bu dosya git'e girmez ve **deploy edilmez**.
+Yerelde açık yönetim gerekiyorsa ortamda `ALLOW_OPEN=1` kullan. Bu değişkeni canlıya
+koyma; canlıda `PASSWORD` zorunludur.
 
 ## gaffur.net'e Deploy
 
-```bash
-npx wrangler login
-npx wrangler d1 create gaffur-db
-```
-
-Çıktıdaki `database_id`'yi `wrangler.jsonc` içine yaz, sonra:
-
-```bash
-npm run db:remote
-npx wrangler secret put PASSWORD
-npm run deploy
-```
+Docker image'i Coolify ile çalıştır. En az `PASSWORD`, Postgres kullanılacaksa ayrıca
+`DATABASE_URL=postgres://...` tanımla. Değişiklikler `main` dalına push edilince VPS
+otomatik deploy hattı tetiklenir.
 
 > **PASSWORD secret'i zorunludur.** Uygulama fail-closed çalışır: secret tanımlı değilse
 > tüm API `503` döner ve arayüz "Kurulum tamamlanmadı" ekranını gösterir — yani secret'ı
@@ -61,20 +56,19 @@ Deploy sonrası uygulamanın **Ayarlar** sayfasından:
 
 ## Nasıl Çalışır
 
-Cron her 15 dakikada tetiklenir; kontrol sırası gelen ürünler (ürün başına ayarlanan
-sıklığa göre) kalıcı kuyruğa alınır. Fiyat çekme sırası: **doğrudan erişim** (site adaptörü → JSON-LD →
+Node zamanlayıcısı kontrol sırası gelen ürünleri kalıcı kuyruğa alır. Fiyat çekme sırası:
+**doğrudan erişim** (site adaptörü → JSON-LD →
 meta → gömülü JSON) → başarısızsa **Crawlee**. Değişimler `price_history`'ye yazılır,
 alarm kurallarına uyanlar bildirim üretir.
 
-Ücretsiz Workers planında çalıştırma başına 50 alt-istek sınırı vardır; bu yüzden
-kontroller 10'arlı partiler halinde yapılır (15 dk'lık tur başına ~10 ürün → saatte ~40
-kontrol kapasitesi; onlarca ürün için fazlasıyla yeterli).
+Kuyruk atomik claim, tekrar önleme, artan retry gecikmesi ve domain başına adaptif hız
+sınırı kullanır.
 
 ## Güvenlik
 
 | Önlem | Nerede |
 |---|---|
-| **Fail-closed kimlik doğrulama** — `PASSWORD` yoksa tüm API 503, giriş de dahil | `worker/api.ts` |
+| **Fail-closed yönetim** — `PASSWORD` yoksa yönetim API'ları 503; halka açık vitrin okumaları çalışır | `worker/api.ts` |
 | Giriş hız sınırı — IP başına 10 deneme/15 dk + toplam 60/15 dk, `429` + `Retry-After` | `worker/api.ts` (D1 `login_attempts`) |
 | Oturum imzası paroladan bağımsız rastgele anahtarla (çerez artık parola için kırma oracle'ı değil) | `worker/auth.ts` (`session_secret`) |
 | Oturum iptali — "Tüm cihazlarda çıkış" imza anahtarını döndürür | Ayarlar → Güvenlik |
@@ -93,9 +87,8 @@ kapatmak için Ayarlar'daki **Tüm cihazlarda çıkış** düğmesini kullan.
 
 ```bash
 npm run check                     # typecheck (worker + web)
-npx tsx scripts/test-parse.ts     # fiyat parser birim testleri
+npm test                          # Vitest regresyon paketi
 npx tsx scripts/probe.ts <url>    # bir URL'yi canlı çözümle
-node scripts/probe-workerd.mjs    # wrangler dev açıkken gerçek site testi
 ```
 
 Mimari ayrıntıları ve saha notları: [CLAUDE.md](CLAUDE.md).
