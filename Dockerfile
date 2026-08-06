@@ -6,7 +6,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npm run build:node
+# Hem public Vite varliklarini (dist/client) hem Node SSR sunucusunu
+# (dist/server) uret. Yalniz build:node calisirsa ana sayfa 404 doner.
+RUN npm run build && npm run build:node
 
 FROM node:24-alpine AS runtime
 WORKDIR /app

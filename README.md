@@ -32,7 +32,7 @@ Docker/Coolify üzerinde çalışır.
 
 ```bash
 npm install
-npm start            # migration + build + Node sunucu → http://localhost:8787
+npm start            # migration + build + Node sunucu → http://localhost:3000
 ```
 
 Yerelde açık yönetim gerekiyorsa ortamda `ALLOW_OPEN=1` kullan. Bu değişkeni canlıya
