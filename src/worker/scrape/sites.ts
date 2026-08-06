@@ -100,7 +100,8 @@ export function discoverTrendyol(html: string, limit = 24): DiscoveredItem[] {
       sanePrice(parsePrice(pr.discountedPrice ?? pr.current ?? pr.sellingPrice ?? pr.originalPrice ?? pr.value)) ??
       null;
     const img = Array.isArray(p.images) ? p.images[0] : undefined;
-    items.push({ url: href, title, price, image: cdnImage(typeof img === 'string' ? img : img?.url) ?? null });
+    const inStock = typeof p.hasStock === 'boolean' ? p.hasStock : typeof p.inStock === 'boolean' ? p.inStock : null;
+    items.push({ url: href, title, price, image: cdnImage(typeof img === 'string' ? img : img?.url) ?? null, inStock });
   }
   return items;
 }

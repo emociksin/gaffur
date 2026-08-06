@@ -144,6 +144,18 @@ function pctDrop(oldP: number, newP: number): number {
   return ((oldP - newP) / oldP) * 100;
 }
 
+const NOTIF_COOLDOWN_S = 6 * 3600;
+
+async function isDuplicate(env: Env, productId: number, kind: string, t: number): Promise<boolean> {
+  const since = t - NOTIF_COOLDOWN_S;
+  const row = await env.DB.prepare(
+    'SELECT 1 FROM notifications WHERE product_id = ? AND kind = ? AND created_at >= ? LIMIT 1'
+  )
+    .bind(productId, kind, since)
+    .first();
+  return row != null;
+}
+
 async function notify(
   env: Env,
   settings: AppSettings,
@@ -155,6 +167,7 @@ async function notify(
   newPrice: number | null,
   tgHtml: string | null
 ): Promise<void> {
+  if (await isDuplicate(env, p.id, kind, now())) return;
   let sent = false;
   if (tgHtml && settings.telegram_token && settings.telegram_chat) {
     sent = await sendTelegram(settings.telegram_token, settings.telegram_chat, tgHtml);
@@ -398,7 +411,7 @@ export async function refreshListing(
           env,
           settings,
           existing,
-          { price: item.price, engine: 'listing', title: item.title, image: item.image ?? undefined },
+          { price: item.price, inStock: item.inStock ?? null, engine: 'listing', title: item.title, image: item.image ?? undefined },
           t
         );
         updated++;
@@ -407,19 +420,20 @@ export async function refreshListing(
     }
     if (added >= maxNew) continue;
     const site = detectSite(url);
+    const itemStock = item.inStock == null ? null : item.inStock ? 1 : 0;
     const res = await env.DB.prepare(
       `INSERT INTO products (url, site, title, image, currency, category_id, interval_min, engine, active,
-        current_price, min_price, max_price, last_engine, last_checked_at, created_at)
-       VALUES (?, ?, ?, ?, 'TRY', ?, 720, 'auto', 1, ?, ?, ?, 'listing', ?, ?)`
+        current_price, min_price, max_price, in_stock, last_engine, last_checked_at, created_at)
+       VALUES (?, ?, ?, ?, 'TRY', ?, 720, 'auto', 1, ?, ?, ?, ?, 'listing', ?, ?)`
     )
-      .bind(url, site, item.title, item.image, category.id, item.price, item.price, item.price, t, t)
+      .bind(url, site, item.title, item.image, category.id, item.price, item.price, item.price, itemStock, t, t)
       .run();
     const newId = res.meta.last_row_id as number;
     if (item.price != null) {
       await env.DB.prepare(
-        'INSERT INTO price_history (product_id, price, checked_at) VALUES (?, ?, ?)'
+        'INSERT INTO price_history (product_id, price, in_stock, checked_at) VALUES (?, ?, ?, ?)'
       )
-        .bind(newId, item.price, t)
+        .bind(newId, item.price, itemStock, t)
         .run();
     }
     added++;

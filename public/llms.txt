@@ -1,17 +1,18 @@
 # gaffur
 
-> Gaffur — kişisel fiyat takip uygulaması (gaffur.net). Trendyol, Hepsiburada,
-> Amazon ve N11 gibi sitelerdeki ürünlerin fiyatlarını düzenli kontrol eder,
-> fiyat düşünce Telegram üzerinden haber verir, fiyat geçmişini grafikle gösterir.
+> Gaffur — fiyat takip uygulaması (gaffur.net). Türkiye'deki e-ticaret
+> sitelerindeki ürün fiyatlarını düzenli kontrol eder, fiyat düşünce
+> bildirim gönderir, fiyat geçmişini grafikle gösterir.
 
-Uygulama parola korumalıdır; herkese açık içerik bulunmaz.
+Uygulama herkese açıktır; ürün listesi, fiyatlar ve fiyat geçmişi
+oturumsuz görüntülenebilir. Ziyaretçiler ürün bağlantısı ekleyerek
+takip başlatabilir.
 
 ## Özellikler
-- Ürün bağlantısı ile fiyat takibi (Trendyol, Hepsiburada, Amazon, N11 + genel siteler)
+- Ürün bağlantısı ile fiyat takibi (Hepsiburada, Vatan, İncehesap + genel siteler)
 - Trendyol kategori/arama listesi takibi (yeni ürün keşfi)
 - Fiyat geçmişi grafiği, en düşük/en yüksek takibi, hedef fiyat alarmı
 - Telegram bildirimleri
 
 ## İletişim
 - [Anasayfa](https://gaffur.net/)
-- [Güvenlik](https://gaffur.net/.well-known/security.txt)

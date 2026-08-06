@@ -401,6 +401,7 @@ api.post('/products', async (c) => {
     .catch(() => ({}) as any);
   const rawUrl = String(body.url ?? '').trim();
   if (!/^https?:\/\//i.test(rawUrl)) return c.json({ error: 'Geçerli bir bağlantı gerekli' }, 400);
+  if (isListingUrl(rawUrl)) return c.json({ error: 'Bu bir liste/kategori sayfası. Tek ürün bağlantısı gerekli, ya da Kategoriler bölümünden ekle.' }, 400);
   const url = canonicalUrl(rawUrl);
   const site = detectSite(url);
 

@@ -94,6 +94,7 @@ export interface DiscoveredItem {
   title: string;
   price: number | null;
   image: string | null;
+  inStock?: boolean | null;
   tracked?: boolean;
 }
 
