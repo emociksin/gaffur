@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 3 Tamamlandı, Faz 4 Sırada
+# Gaffur Handoff — Faz 4 Tamamlandı, Faz 5 Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (60 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health), GitHub Actions CI
+- **Test:** Vitest (64 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok zekâsı), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -71,7 +71,7 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 4
+## Sıradaki İş — Faz 5
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -104,14 +104,21 @@ Domain limiter notu: `crawl_domain_state` atomik slot dağıtır. Taban aralık 
 Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katlanır (üst sınır
 15 dk), başarıda taban aralığa döner. Slot bekleyen job deneme hakkı tüketmeden ertelenir.
 
-### Faz 4 — Stok Zekâsı + Gerçek Fiyat Referansı **← sıradaki**
-- [ ] `price_baselines`: 10/30/90 gün medyanı, all-time low, gürültü filtresi
-- [ ] `stock_transitions`: 2 ardışık doğrulama, unknown güvenliği, cooldown
-- [ ] Stokta olmayan teklifleri en düşük fiyat hesabından çıkar
-- [ ] Baseline ve stok geçişlerini API/UI'da mevcut tasarım diliyle göster
+### Faz 4 — Stok Zekâsı + Gerçek Fiyat Referansı ✅
+- [x] `price_baselines`: 10/30/90 gün medyanı, 10 gün en düşük, all-time low
+- [x] Bildirimlerde 30 günlük medyan referansı ve %2 gürültü filtresi
+- [x] `stock_transitions`: 2 ardışık doğrulama, unknown geçiş güvenliği, 3 unknown parser bayrağı
+- [x] 6 saat bildirim cooldown'u korunarak yalnız doğrulanmış stok geçişinde alarm
+- [x] Stok dışı fiyatları baseline, extrema ve fırsat hesabından çıkarma
+- [x] Baseline ve stok parser durumunu ürün detay API/UI'ında gösterme
 
-### Faz 5-8 Özet
-- **Faz 5:** Kargo, taksit, landed cost (gümrük PDF teyidi ön koşul)
+### Faz 5 — Kargo, Taksit, Landed Cost **← sıradaki**
+- [ ] Güncel gümrük mevzuatını birincil resmi kaynaktan doğrula; oranları kaynak/tarih ile versiyonla
+- [ ] Kargo teklifleri ve taksit seçenekleri veri modeli + API
+- [ ] Kur/vergiler/kargo dahil toplam maliyet hesaplama motoru
+- [ ] Ürün detayında şeffaf maliyet dökümü ve belirsizlik uyarısı
+
+### Faz 6-8 Özet
 - **Faz 6:** Public SSR + SEO (ürün sayfaları, JSON-LD, sitemap)
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
 - **Faz 8:** Katalog + ürün eşleştirme (Python servisi, Scrapy, embedding)
@@ -141,7 +148,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ## Bilinen Sorunlar / Dikkat
 
 - **Trendyol directFetch ile erişilemez:** bot koruması 403 veriyor; Crawlee CheerioCrawler canlı spike'ta 200 aldı
-- **Gümrük oranları teyit edilmedi** (Karar 10813 PDF'i okunmadı)
+- **Gümrük oranları henüz teyit edilmedi** (Faz 5 başlamadan resmi metin okunacak; tahmin oran yazılmayacak)
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
 

@@ -5,8 +5,10 @@ import type {
   DiscoveredItem,
   HistoryPoint,
   Notification,
+  PriceBaseline,
   Product,
   ScrapeResult,
+  StockTransition,
   Summary,
   Watch,
 } from '../shared/types';
@@ -78,7 +80,14 @@ export const api = {
   summary: () => req<Summary>('/summary'),
   products: () => req<{ products: Product[] }>('/products'),
   product: (id: number, days = 90) =>
-    req<{ product: Product; history: HistoryPoint[]; notifications: Notification[] }>(`/products/${id}?days=${days}`),
+    req<{
+      product: Product;
+      history: HistoryPoint[];
+      notifications: Notification[];
+      baseline: PriceBaseline | null;
+      stockState: { unknown_streak: number; parser_error: number } | null;
+      stockTransitions: StockTransition[];
+    }>(`/products/${id}?days=${days}`),
   preview: (url: string) =>
     req<{ type: 'product' | 'listing'; result?: ScrapeResult; items?: DiscoveredItem[]; error?: string }>('/preview', {
       method: 'POST',

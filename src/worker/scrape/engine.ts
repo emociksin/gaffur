@@ -9,6 +9,13 @@ import { readCapped, safeFetch, SsrfError } from './ssrf';
 import { crawleeFetch } from './crawlee';
 import { parseWithRegistry, TRENDYOL_LISTING_PARSER_VERSION } from './registry';
 import { recordParserOutcome } from './parser-health';
+import { calculatePriceBaseline, savePriceBaseline } from '../intelligence/price-baseline';
+import {
+  applyStockObservation,
+  stockStatusFromBoolean,
+  stockStatusToLegacy,
+  type StockStatus,
+} from '../intelligence/stock';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -192,6 +199,7 @@ async function notifyWatches(
   env: Env,
   p: Product,
   oldPrice: number | null,
+  referencePrice: number | null,
   price: number,
   stockChanged: boolean,
   backInStock: boolean,
@@ -214,13 +222,13 @@ async function notifyWatches(
       kind = 'target';
       title = 'Takip ettiğin ürün hedef fiyata indi';
     } else if (
-      oldPrice != null &&
-      price < oldPrice &&
+      referencePrice != null &&
+      price < referencePrice &&
       (watch.alert_mode === 'drop' || watch.alert_mode === 'any') &&
-      pctDrop(oldPrice, price) >= (watch.threshold_pct || 0)
+      pctDrop(referencePrice, price) >= Math.max(2, watch.threshold_pct || 0)
     ) {
       kind = 'drop';
-      title = `Takip ettiğin ürünün fiyatı düştü (%${pctDrop(oldPrice, price).toFixed(1)})`;
+      title = `Takip ettiğin ürünün fiyatı düştü (%${pctDrop(referencePrice, price).toFixed(1)})`;
     }
     if (!kind) continue;
 
@@ -259,13 +267,18 @@ export async function applyPriceUpdate(
   const oldPrice = p.current_price;
   const price = r.price;
   const changed = oldPrice != null && Math.abs(oldPrice - price) >= 0.01;
-  const newMin = p.min_price == null ? price : Math.min(p.min_price, price);
-  const newMax = p.max_price == null ? price : Math.max(p.max_price, price);
-  const newStock = r.inStock == null ? p.in_stock : r.inStock ? 1 : 0;
+  const currentStockStatus: StockStatus = p.stock_status ?? (p.in_stock == null ? 'unknown' : p.in_stock ? 'in_stock' : 'out_of_stock');
+  const stock = await applyStockObservation(env, p.id, currentStockStatus, stockStatusFromBoolean(r.inStock), t);
+  const newStock = stockStatusToLegacy(stock.confirmedStatus);
+  const countsForPrice = stock.confirmedStatus !== 'out_of_stock';
+  const newMin = countsForPrice ? (p.min_price == null ? price : Math.min(p.min_price, price)) : p.min_price;
+  const newMax = countsForPrice ? (p.max_price == null ? price : Math.max(p.max_price, price)) : p.max_price;
+  const baselineBefore = await calculatePriceBaseline(env, p.id, t);
+  const referencePrice = baselineBefore.median_30d ?? oldPrice;
 
   await env.DB.prepare(
     `UPDATE products SET
-       current_price = ?, previous_price = ?, list_price = ?, in_stock = ?,
+       current_price = ?, previous_price = ?, list_price = ?, in_stock = ?, stock_status = ?,
        min_price = ?, max_price = ?, fail_count = 0, last_error = NULL,
        last_engine = ?, last_checked_at = ?, last_change_at = ?,
        title = CASE WHEN ? != '' THEN ? ELSE title END,
@@ -277,6 +290,7 @@ export async function applyPriceUpdate(
       changed ? oldPrice : p.previous_price,
       r.listPrice ?? null,
       newStock,
+      stock.confirmedStatus,
       newMin,
       newMax,
       r.engine,
@@ -299,6 +313,8 @@ export async function applyPriceUpdate(
       .run();
   }
 
+  await savePriceBaseline(env, await calculatePriceBaseline(env, p.id, t));
+
   // dual-write: offer + snapshot (Faz 2)
   try {
     const offerId = await ensureOffer(env, { id: p.id, url: p.url, site: p.site }, t);
@@ -318,13 +334,8 @@ export async function applyPriceUpdate(
   const link = tgLink(p.url, p.title || 'Ürün');
 
   // stok degisimi bildirimi
-  if (
-    settings.notify_stock === '1' &&
-    r.inStock != null &&
-    p.in_stock != null &&
-    (r.inStock ? 1 : 0) !== p.in_stock
-  ) {
-    const backIn = r.inStock;
+  if (settings.notify_stock === '1' && stock.transitioned && stock.toStatus != null) {
+    const backIn = stock.toStatus === 'in_stock';
     await notify(
       env,
       settings,
@@ -340,11 +351,12 @@ export async function applyPriceUpdate(
   }
 
   if (changed && oldPrice != null) {
-    const drop = price < oldPrice;
-    const pct = Math.abs(pctDrop(oldPrice, price));
+    const drop = referencePrice != null && price < referencePrice;
+    const pct = referencePrice != null ? Math.abs(pctDrop(referencePrice, price)) : 0;
+    const materialMove = pct >= 2;
     const pctTxt = `%${pct.toFixed(pct >= 10 ? 0 : 1)}`;
     const priceLine = `${fmtMoney(oldPrice, cur)} → <b>${fmtMoney(price, cur)}</b>`;
-    const minLine = newMin < price ? `\nEn düşük: ${fmtMoney(newMin, cur)}` : '\nŞu an en düşük fiyatında';
+    const minLine = newMin != null && newMin < price ? `\nEn düşük: ${fmtMoney(newMin, cur)}` : '\nŞu an en düşük fiyatında';
 
     const mode = p.alert_mode;
     const hitTarget = p.target_price != null && price <= p.target_price && oldPrice > p.target_price;
@@ -362,7 +374,7 @@ export async function applyPriceUpdate(
         `◎ <b>Hedef fiyata indi</b>\n${link}\n${priceLine}\nHedefin: ${fmtMoney(p.target_price, cur)}${minLine}`
       );
       notified = true;
-    } else if (mode === 'any' || (mode === 'drop' && drop && pct >= (p.threshold_pct || 0))) {
+    } else if (materialMove && (mode === 'any' || (mode === 'drop' && drop && pct >= Math.max(2, p.threshold_pct || 0)))) {
       if (drop || mode === 'any') {
         const kind = drop ? 'drop' : 'rise';
         if (drop || settings.notify_rise === '1' || mode === 'any') {
@@ -383,8 +395,7 @@ export async function applyPriceUpdate(
     }
   }
 
-  const stockChanged = r.inStock != null && p.in_stock != null && (r.inStock ? 1 : 0) !== p.in_stock;
-  if (await notifyWatches(env, p, oldPrice, price, stockChanged, r.inStock === true, t)) notified = true;
+  if (await notifyWatches(env, p, oldPrice, referencePrice, price, stock.transitioned, stock.toStatus === 'in_stock', t)) notified = true;
 
   return { ok: true, price, changed, notified };
 }
@@ -501,12 +512,28 @@ export async function refreshListing(
     const itemStock = item.inStock == null ? null : item.inStock ? 1 : 0;
     const res = await env.DB.prepare(
       `INSERT INTO products (url, site, title, image, currency, category_id, interval_min, engine, active,
-        current_price, min_price, max_price, in_stock, last_engine, last_checked_at, created_at)
-       VALUES (?, ?, ?, ?, 'TRY', ?, 720, 'auto', 1, ?, ?, ?, ?, 'listing', ?, ?)`
+        current_price, min_price, max_price, in_stock, stock_status, last_engine, last_checked_at, created_at)
+       VALUES (?, ?, ?, ?, 'TRY', ?, 720, 'auto', 1, ?, ?, ?, ?, ?, 'listing', ?, ?)`
     )
-      .bind(url, site, item.title, item.image, category.id, item.price, item.price, item.price, itemStock, t, t)
+      .bind(
+        url,
+        site,
+        item.title,
+        item.image,
+        category.id,
+        item.price,
+        item.price,
+        item.price,
+        itemStock,
+        itemStock == null ? 'unknown' : itemStock ? 'in_stock' : 'out_of_stock',
+        t,
+        t
+      )
       .run();
     const newId = res.meta.last_row_id as number;
+    await env.DB.prepare(
+      'INSERT INTO product_stock_state (product_id, confirmed_status) VALUES (?, ?)'
+    ).bind(newId, itemStock == null ? 'unknown' : itemStock ? 'in_stock' : 'out_of_stock').run();
     if (item.price != null) {
       await env.DB.prepare(
         'INSERT INTO price_history (product_id, price, in_stock, checked_at) VALUES (?, ?, ?, ?)'

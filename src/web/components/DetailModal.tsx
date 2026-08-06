@@ -1,6 +1,6 @@
 // Urun detayi: buyuk grafik, istatistikler, ayarlar, gecmis
 import { useCallback, useEffect, useState } from 'react';
-import type { Category, HistoryPoint, Notification, Product } from '../../shared/types';
+import type { Category, HistoryPoint, Notification, PriceBaseline, Product, StockTransition } from '../../shared/types';
 import { api } from '../api';
 import { dateFull, money, pctFmt, timeAgo } from '../format';
 import { PriceChart } from './Chart';
@@ -27,9 +27,14 @@ export function DetailModal({
   const toast = useToast();
   const isAdmin = useIsAdmin();
   const [days, setDays] = useState(90);
-  const [data, setData] = useState<{ product: Product; history: HistoryPoint[]; notifications: Notification[] } | null>(
-    null
-  );
+  const [data, setData] = useState<{
+    product: Product;
+    history: HistoryPoint[];
+    notifications: Notification[];
+    baseline: PriceBaseline | null;
+    stockState: { unknown_streak: number; parser_error: number } | null;
+    stockTransitions: StockTransition[];
+  } | null>(null);
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
@@ -137,6 +142,8 @@ export function DetailModal({
             <SiteBadge site={p.site} />
             {p.fail_count >= 3 && <span className="mini-badge mini-badge-err">kontrol edilemiyor</span>}
             {p.in_stock === 0 && <span className="mini-badge mini-badge-err">stok yok</span>}
+            {p.stock_status === 'preorder' && <span className="mini-badge">ön sipariş</span>}
+            {data.stockState?.parser_error === 1 && <span className="mini-badge mini-badge-err">stok verisi okunamıyor</span>}
             {!p.active && <span className="mini-badge">durduruldu</span>}
           </div>
           <h2 className="det-title">{p.title}</h2>
@@ -202,6 +209,18 @@ export function DetailModal({
           <b className={p.target_price != null && p.current_price != null && p.current_price <= p.target_price ? 'stat-green' : ''}>
             {money(p.target_price, p.currency)}
           </b>
+        </div>
+        <div>
+          <small>30 günlük medyan</small>
+          <b>{money(data.baseline?.median_30d ?? null, p.currency)}</b>
+        </div>
+        <div>
+          <small>90 günlük medyan</small>
+          <b>{money(data.baseline?.median_90d ?? null, p.currency)}</b>
+        </div>
+        <div>
+          <small>Son 10 gün en düşük</small>
+          <b className="stat-green">{money(data.baseline?.low_10d ?? null, p.currency)}</b>
         </div>
       </div>
 
@@ -274,7 +293,7 @@ export function DetailModal({
         <label>
           Veri kaynağı
           <select value={form.engine} onChange={(e) => setForm({ ...form, engine: e.target.value })}>
-            <option value="auto">Otomatik (önce doğrudan, olmadı Firecrawl)</option>
+            <option value="auto">Otomatik (önce doğrudan, olmadı Crawlee)</option>
             <option value="direct">Sadece doğrudan</option>
             <option value="crawlee">Sadece Crawlee</option>
           </select>

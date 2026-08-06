@@ -2,6 +2,7 @@
 
 export type AlertMode = 'drop' | 'target' | 'any' | 'off';
 export type Engine = 'auto' | 'direct' | 'crawlee';
+export type StockStatus = 'in_stock' | 'out_of_stock' | 'preorder' | 'unknown';
 
 export interface Category {
   id: number;
@@ -33,6 +34,7 @@ export interface Product {
   previous_price: number | null;
   list_price: number | null;
   in_stock: number | null;
+  stock_status: StockStatus;
   min_price: number | null;
   max_price: number | null;
   fail_count: number;
@@ -42,6 +44,28 @@ export interface Product {
   last_change_at: number | null;
   created_at: number;
   spark?: { p: number; t: number }[];
+}
+
+export interface PriceBaseline {
+  product_id: number;
+  median_10d: number | null;
+  low_10d: number | null;
+  median_30d: number | null;
+  median_90d: number | null;
+  all_time_low: number | null;
+  sample_count_10d: number;
+  sample_count_30d: number;
+  sample_count_90d: number;
+  calculated_at: number;
+}
+
+export interface StockTransition {
+  id: number;
+  product_id: number;
+  from_status: StockStatus;
+  to_status: StockStatus;
+  confirmed_at: number;
+  observation_count: number;
 }
 
 export interface HistoryPoint {

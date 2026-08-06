@@ -266,7 +266,7 @@ api.get('/summary', async (c) => {
                 WHERE ph.product_id = p.id AND ph.checked_at > ?
                 ORDER BY ph.checked_at ASC LIMIT 1) AS win_first
        FROM products p
-       WHERE p.active = 1 AND p.current_price IS NOT NULL`
+       WHERE p.active = 1 AND p.current_price IS NOT NULL AND p.stock_status = 'in_stock'`
     )
       .bind(week, week)
       .all<any>(),
@@ -277,7 +277,7 @@ api.get('/summary', async (c) => {
       const from = r.base_old ?? r.win_first;
       if (from == null || r.current_price == null || from <= 0) return null;
       const pct = ((from - r.current_price) / from) * 100;
-      return pct >= 0.5
+      return pct >= 2
         ? {
             id: r.id,
             title: r.title,
@@ -342,7 +342,26 @@ api.get('/products/:id', async (c) => {
   )
     .bind(id)
     .all();
-  return c.json({ product: p, history: history.results ?? [], notifications: notifs.results ?? [] });
+  const [baseline, stockState, stockTransitions] = await Promise.all([
+    c.env.DB.prepare('SELECT * FROM price_baselines WHERE product_id = ?').bind(id).first(),
+    c.env.DB.prepare(
+      `SELECT confirmed_status, candidate_status, candidate_count, unknown_streak, parser_error,
+              last_observed_at, last_transition_at
+       FROM product_stock_state WHERE product_id = ?`
+    ).bind(id).first(),
+    c.env.DB.prepare(
+      `SELECT id, product_id, from_status, to_status, confirmed_at, observation_count
+       FROM stock_transitions WHERE product_id = ? ORDER BY confirmed_at DESC LIMIT 20`
+    ).bind(id).all(),
+  ]);
+  return c.json({
+    product: p,
+    history: history.results ?? [],
+    notifications: notifs.results ?? [],
+    baseline,
+    stockState,
+    stockTransitions: stockTransitions.results ?? [],
+  });
 });
 
 // URL onizleme (kaydetmeden once ne bulundugunu goster) — ziyaretciye acik, sinirli
@@ -455,9 +474,9 @@ api.post('/products', async (c) => {
 
   const res = await c.env.DB.prepare(
     `INSERT INTO products (url, site, title, image, currency, category_id, target_price, alert_mode, threshold_pct,
-       interval_min, engine, active, current_price, list_price, in_stock, min_price, max_price,
+       interval_min, engine, active, current_price, list_price, in_stock, stock_status, min_price, max_price,
        fail_count, last_error, last_engine, last_checked_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
     .bind(
       url,
@@ -474,6 +493,7 @@ api.post('/products', async (c) => {
       r.ok ? (r.price ?? null) : null,
       r.ok ? (r.listPrice ?? null) : null,
       r.ok ? (r.inStock == null ? null : r.inStock ? 1 : 0) : null,
+      r.ok && r.inStock != null ? (r.inStock ? 'in_stock' : 'out_of_stock') : 'unknown',
       r.ok ? (r.price ?? null) : null,
       r.ok ? (r.price ?? null) : null,
       r.ok ? 0 : 1,
@@ -484,6 +504,10 @@ api.post('/products', async (c) => {
     )
     .run();
   const id = res.meta.last_row_id as number;
+  await c.env.DB.prepare(
+    `INSERT INTO product_stock_state (product_id, confirmed_status)
+     VALUES (?, ?)`
+  ).bind(id, r.ok && r.inStock != null ? (r.inStock ? 'in_stock' : 'out_of_stock') : 'unknown').run();
   if (r.ok && r.price != null) {
     await c.env.DB.prepare('INSERT INTO price_history (product_id, price, list_price, in_stock, checked_at) VALUES (?, ?, ?, ?, ?)')
       .bind(id, r.price, r.listPrice ?? null, r.inStock == null ? null : r.inStock ? 1 : 0, t)

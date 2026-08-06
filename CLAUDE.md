@@ -50,6 +50,12 @@ eşikleri her fiyat güncellemesinde değerlendirilir; kişisel bildirimler
 ekranında gösterilir. Kullanıcıya özel kanal bilgisi henüz olmadığı için bu bildirimler
 uygulama içidir; global yönetici Telegram sohbetine gönderilmez.
 
+Faz 4 fiyat/stok zekâsı `src/worker/intelligence/` altındadır. Stok durumu
+`in_stock/out_of_stock/preorder/unknown` olarak tutulur; değişim ancak iki ardışık aynı
+gözlemde doğrulanır. `unknown` geçiş değildir, üç ardışık unknown `parser_error` bayrağı
+açar. Fiyat referansı önceki tek fiyat değil 30 günlük medyandır; %2 altı hareket
+bildirim gürültüsü sayılır. Stok dışı fiyatlar baseline, extrema ve fırsat hesabına girmez.
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık
