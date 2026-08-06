@@ -1,0 +1,131 @@
+# Gaffur Handoff — Faz 2 Tamamlandı, Faz 3'e Hazır
+
+## Proje Nedir
+
+gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, sistem 15 dk'da bir tarar, fiyat düşünce Telegram'dan haber verir. Hedef: tek ürün takibinden çok-satıcılı fiyat karşılaştırma platformuna dönüşüm.
+
+## Tech Stack
+
+- **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
+- **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
+- **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
+- **Test:** Vitest (47 test — parsePrice + SSRF), GitHub Actions CI
+- **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
+
+## Dosya Yapısı
+
+```
+src/worker/          Hono API + cron + scrape engine
+  index.ts           Hono app export
+  api.ts             REST rotaları (/api/*) — admin auth + kullanıcı auth + watches
+  auth.ts            Tek parola (admin) + çok kullanıcılı hesap (users/sessions)
+  cron.ts            15 dk zamanlayıcı
+  db.ts              DB helpers, ensureOffer, writeOfferSnapshot
+  telegram.ts        Telegram bildirimleri
+  env.ts             Env interface
+  scrape/
+    engine.ts        scrapeUrl, checkProduct, applyPriceUpdate (dual-write offer), refreshListing
+    parse.ts         Genel parser zinciri: JSON-LD → meta → gömülü JSON → regex
+    sites.ts         Site tespiti, URL kanonlaştırma, Trendyol/HB/Amazon/N11 adaptörleri
+    price.ts         parsePrice (TR/EN sayı biçimleri)
+    ssrf.ts          SSRF koruması
+src/web/             React SPA
+src/server/          Node.js sunucu girişi
+  index.ts           Express-benzeri serve (SQLite veya Postgres seçimi)
+  d1.ts              SQLite D1 wrapper
+  pg.ts              Postgres D1-uyumlu wrapper
+src/shared/types.ts  Ortak tipler
+migrations/          SQLite (*.sql) + Postgres (*.pg.sql) migration'ları
+scripts/             Canlı test harness'ları, backfill script'leri
+```
+
+## Tamamlanan Fazlar
+
+### SSRF Hotfix ✅
+- `safeFetch`: DNS çözümü sonrası özel/loopback IP reddi, redirect zincirinde yeniden kontrol
+- 34 SSRF test vakası
+
+### Faz 0 — Acil Yamalar ✅
+- `refreshListing` stok bug'ı düzeltildi (inStock artık geçiriliyor)
+- Bildirim dedup: aynı product+kind 6 saat cooldown
+- Liste URL'sinin ürün olarak eklenmesi engellendi
+- robots.txt / llms.txt güncellendi
+
+### Faz 1 — Zemin Temizliği ✅
+1. **Workers hattı kaldırıldı (K7):** wrangler.jsonc, @cloudflare/workers-types silindi. Tek hedef Node/Docker
+2. **Vitest + CI:** 47 test, GitHub Actions (typecheck + test)
+3. **Postgres desteği:** PgD1 wrapper (`?` → `$1,$2...`, auto `RETURNING id`), dual DB (SQLite/Postgres)
+
+### Faz 2 — Veri Modeli + Hesap Sistemi ✅
+1. **Yeni tablolar:** offers, offer_snapshots, users, sessions, watches (SQLite + Postgres)
+2. **Dual-write:** Her fiyat güncellemesinde offer + snapshot da yazılır (try/catch ile geriye uyumlu — tablo yoksa atlanır)
+3. **Backfill:** `scripts/backfill-offers.ts` — mevcut price_history → offer_snapshots
+4. **Kullanıcı hesap sistemi:**
+   - `POST /api/auth/register` (email + parola + KVKK onayı)
+   - `POST /api/auth/login` (rate limited)
+   - `POST /api/auth/logout`
+   - `GET /api/auth/me`
+   - Parola: salt + SHA-256 hash, ayrı çerez (gfr_u), sessions tablosu
+5. **Watches API:**
+   - `GET /api/watches` (kullanıcının takip listesi)
+   - `POST /api/watches` (ürün takibe al)
+   - `DELETE /api/watches/:id`
+
+## Sıradaki İş — Faz 2 Kalan + Faz 3
+
+### Faz 2 Kalan (küçük)
+- [ ] Frontend: kullanıcı kayıt/giriş UI'ı (şu an sadece API var)
+- [ ] Watches'ı bildirim zincirine bağlama (şu an bildirimler eski products alanlarını kullanıyor)
+- [ ] **K4c Spike (~30 dk):** Crawlee'nin Trendyol bot korumasını aşıp aşamadığını test et
+
+### Faz 3 — Crawlee Tarama Altyapısı
+- `crawl_jobs` Postgres tablosu tabanlı kuyruk (ADR-3)
+- Scheduler/worker ayrımı (mevcut monolitik cron.ts üçe bölünecek)
+- Crawlee entegrasyonu (CheerioCrawler varsayılan, Playwright whitelist)
+- Domain başına rate limit, adaptif frekans
+- Versiyonlu parser registry + hata oranı alarmı
+- Firecrawl yolu sökülecek (K3)
+- Kapsam: Vatan, İncehesap, Hepsiburada, üretici siteleri (K4)
+
+### Faz 4-8 Özet
+- **Faz 4:** Stok zekâsı + gerçek fiyat referansı (price_baselines, stock_transitions)
+- **Faz 5:** Kargo, taksit, landed cost (gümrük PDF teyidi ön koşul)
+- **Faz 6:** Public SSR + SEO (ürün sayfaları, JSON-LD, sitemap)
+- **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
+- **Faz 8:** Katalog + ürün eşleştirme (Python servisi, Scrapy, embedding)
+
+## Kritik Kararlar (değiştirilmemeli)
+
+| # | Karar |
+|---|-------|
+| K1 | Halka açık ürün, Postgres + SSR + çok kullanıcılı baştan |
+| K3 | Crawlee + Scrapy (Firecrawl sökülecek) |
+| K4 | Erişilebilen sitelerle başla (Vatan, İncehesap, HB) |
+| K5 | "Tüm satıcılar" iddiası kullanılmayacak, kapsam açıkça gösterilecek |
+| K6 | Uyum rozeti iç araç, public'te sadece veri gösterilir |
+| K7 | Workers hattı kapatıldı ✅ |
+
+## Komutlar
+
+```bash
+npm run dev        # Vite dev server (API proxy 8787'ye)
+npm start          # build + start:node (tam uygulama)
+npm run check      # typecheck
+npm test           # vitest (47 test)
+npx tsx scripts/probe.ts <url>         # tek URL test
+npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
+```
+
+## Bilinen Sorunlar / Dikkat
+
+- **Trendyol erişilemez:** 47 ardışık hata, bot koruması. Crawlee spike yapılmadı henüz
+- **Firecrawl hiç canlı test edilmedi** (anahtar yok)
+- **Gümrük oranları teyit edilmedi** (Karar 10813 PDF'i okunmadı)
+- **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
+- Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
+
+## Detaylı Plan
+
+~800 satırlık tam plan `gaffur-plan-prompt.md` dosyasında. ADR'ler, risk tablosu, doğrulama kriterleri, mevzuat analizi (indirimli satış yönetmeliği, gümrük kararı) dahil.
+
+CLAUDE.md'de güncel mimari bilgiler var — her zaman oraya bak.
