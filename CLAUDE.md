@@ -20,6 +20,7 @@ src/worker/          Cloudflare Worker (Hono API + cron)
   db.ts              D1 yardımcıları, settings varsayılanları
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
   scrape/
+    crawlee.ts       CheerioCrawler transport; disksiz storage + her redirect'te SSRF doğrulama
     price.ts         parsePrice (TR/EN sayı biçimleri), para birimi tespiti
     parse.ts         Genel katman: JSON-LD → meta/microdata → gömülü JSON → bağlamsal regex; bracedJson (brace-balance)
     sites.ts         Site tespiti, URL kanonlaştırma, Trendyol/HB/Amazon/N11 adaptörleri, discoverTrendyol (liste keşfi)
@@ -109,7 +110,7 @@ DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
 
 ## Kurallar
 
-- Yeni bağımlılık ekleme (hono, react, react-dom, postgres dışında runtime bağımlılık yok; grafik SVG el yapımı).
+- Yeni bağımlılık ekleme (`@crawlee/cheerio`, hono, react, react-dom, postgres dışında runtime bağımlılık yok; grafik SVG el yapımı).
 - UI metinleri basit Türkçe; emoji yok (▼▲◎ gibi unicode işaretler serbest).
 - Fiyat karşılaştırmaları 0.01 toleransla (`applyPriceUpdate`).
 - `local `.wrangler/` state'i ve `dist/` git'e girmez.

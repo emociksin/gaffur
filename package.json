@@ -14,8 +14,9 @@
     "probe": "tsx scripts/probe.ts"
   },
   "dependencies": {
+    "@crawlee/cheerio": "^3.18.0",
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.6.0",
+    "hono": "^4.12.34",
     "postgres": "^3.4.9",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

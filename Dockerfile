@@ -1,6 +1,5 @@
 # Gaffur — kendi sunucunda (Coolify/Docker) calistirmak icin.
-# Cloudflare Workers dagitimi hala destekleniyor (npm run deploy); bu imaj
-# ayni uygulamayi Node uzerinde, yerel SQLite ile calistirir.
+# Tek hedef Node/Docker. SQLite veya DATABASE_URL ile Postgres kullanir.
 
 FROM node:24-alpine AS build
 WORKDIR /app

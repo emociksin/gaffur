@@ -1,4 +1,4 @@
-// Kontrol hatti: dogrudan fetch → site adaptoru → Firecrawl fallback → fiyat guncelle → alarm/bildirim
+// Kontrol hatti: direct → Crawlee → Firecrawl (gecici fallback) → parser → fiyat/bildirim
 import type { Env } from '../env';
 import type { AppSettings, Engine, Product, ScrapeResult } from '../../shared/types';
 import { canonicalUrl, detectSite, discoverTrendyol, extractForSite } from './sites';
@@ -6,6 +6,7 @@ import { fmtMoney } from './price';
 import { ensureOffer, getSettings, insertNotification, now, writeOfferSnapshot } from '../db';
 import { escTg, sendTelegram, tgLink } from '../telegram';
 import { readCapped, safeFetch, SsrfError } from './ssrf';
+import { crawleeFetch } from './crawlee';
 
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
@@ -23,6 +24,10 @@ export async function directFetch(url: string): Promise<{ status: number; html: 
   const res = await safeFetch(url, FETCH_HEADERS);
   const html = await readCapped(res);
   return { status: res.status, html };
+}
+
+export async function crawleeScrape(url: string): Promise<string> {
+  return (await crawleeFetch(url, FETCH_HEADERS)).html;
 }
 
 export { SsrfError };
@@ -88,6 +93,30 @@ export async function scrapeUrl(rawUrl: string, engine: Engine, fcKey?: string):
       }
       blocked = true;
       directNote = e?.message ? String(e.message).slice(0, 120) : 'bağlantı hatası';
+    }
+  }
+
+  if (engine === 'auto' && (blocked || directNote)) {
+    try {
+      const { status, html } = await crawleeFetch(url, FETCH_HEADERS);
+      const ext = extractForSite(site, html);
+      if (!(ext as any).blocked && status < 400 && ext.price != null) {
+        return {
+          ...base,
+          ok: true,
+          engine: 'crawlee',
+          title: ext.title,
+          image: ext.image,
+          price: ext.price,
+          listPrice: ext.listPrice,
+          currency: ext.currency ?? 'TRY',
+          inStock: ext.inStock,
+        };
+      }
+      directNote = looksBlocked(status, html) ? 'Crawlee bot koruması' : `Crawlee fiyat bulamadı (HTTP ${status})`;
+    } catch (e: any) {
+      if (e instanceof SsrfError) return { ...base, error: 'Bu adres güvenlik nedeniyle çekilemez' };
+      directNote = `Crawlee: ${String(e?.message ?? e).slice(0, 120)}`;
     }
   }
 
@@ -244,6 +273,7 @@ async function notifyWatches(
     });
     emitted = true;
   }
+
   return emitted;
 }
 
@@ -455,20 +485,24 @@ export async function refreshListing(
   let html = '';
   try {
     const res = await directFetch(category.source_url);
-    if (looksBlocked(res.status, res.html) && settings.firecrawl_key) {
-      html = await firecrawlScrape(settings.firecrawl_key, category.source_url);
+    if (looksBlocked(res.status, res.html)) {
+      html = await crawleeScrape(category.source_url);
     } else {
       html = res.html;
     }
   } catch (e: any) {
-    if (settings.firecrawl_key) {
-      try {
-        html = await firecrawlScrape(settings.firecrawl_key, category.source_url);
-      } catch (e2: any) {
-        return { ok: false, found: 0, added: 0, updated: 0, error: String(e2?.message ?? e2).slice(0, 160) };
+    try {
+      html = await crawleeScrape(category.source_url);
+    } catch (crawlError: any) {
+      if (settings.firecrawl_key) {
+        try {
+          html = await firecrawlScrape(settings.firecrawl_key, category.source_url);
+        } catch (e2: any) {
+          return { ok: false, found: 0, added: 0, updated: 0, error: String(e2?.message ?? crawlError).slice(0, 160) };
+        }
+      } else {
+        return { ok: false, found: 0, added: 0, updated: 0, error: String(crawlError?.message ?? e).slice(0, 160) };
       }
-    } else {
-      return { ok: false, found: 0, added: 0, updated: 0, error: String(e?.message ?? e).slice(0, 160) };
     }
   }
 

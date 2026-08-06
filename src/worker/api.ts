@@ -5,7 +5,7 @@ import type { Env } from './env';
 import type { AppSettings, Product } from '../shared/types';
 import { ensureOffer, getProduct, getSettings, insertNotification, now, setSetting, SETTINGS_DEFAULTS, writeOfferSnapshot } from './db';
 import { checkSession, generateSessionId, hashPassword, makeSession, rotateSessionSecret, safeEqual, SESSION_MAX_AGE_S, verifyPassword } from './auth';
-import { checkProduct, directFetch, firecrawlScrape, refreshListing, scrapeUrl } from './scrape/engine';
+import { checkProduct, crawleeScrape, directFetch, firecrawlScrape, refreshListing, scrapeUrl } from './scrape/engine';
 import { canonicalUrl, detectSite, discoverTrendyol, isListingUrl } from './scrape/sites';
 import { detectChatId, sendTelegram } from './telegram';
 
@@ -366,8 +366,12 @@ api.post('/preview', async (c) => {
       const res = await directFetch(url);
       html = res.html;
       let items = discoverTrendyol(html, 24);
-      if (!items.length && settings.firecrawl_key) {
-        html = await firecrawlScrape(settings.firecrawl_key, url);
+      if (!items.length) {
+        try {
+          html = await crawleeScrape(url);
+        } catch {
+          if (settings.firecrawl_key) html = await firecrawlScrape(settings.firecrawl_key, url);
+        }
         items = discoverTrendyol(html, 24);
       }
       if (!items.length)
