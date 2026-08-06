@@ -18,6 +18,8 @@ import type {
   NotificationChannelConfig,
   Opportunity,
   ComplianceAssessment,
+  CatalogMatchCandidate,
+  CatalogMetrics,
 } from '../shared/types';
 
 export class ApiError extends Error {
@@ -149,6 +151,16 @@ export const api = {
   compliance: () => req<{ assessments: ComplianceAssessment[] }>('/compliance'),
   refreshCompliance: () => req<{ result: { refreshed: boolean; count: number; calculatedAt: number } }>('/compliance/refresh', { method: 'POST' }),
   refreshOpportunities: () => req<{ result: { refreshed: boolean; count: number; calculatedAt: number } }>('/opportunities/refresh', { method: 'POST' }),
+  catalogMatches: (status: 'pending' | 'approved' | 'rejected' | 'stale' | 'all' = 'pending') =>
+    req<{ matches: CatalogMatchCandidate[] }>(`/catalog/matches?status=${status}`),
+  catalogMetrics: () => req<{ metrics: CatalogMetrics }>('/catalog/metrics'),
+  refreshCatalogMatches: () =>
+    req<{ result: { products: number; candidates: number; calculatedAt: number } }>('/catalog/matches/refresh', { method: 'POST' }),
+  reviewCatalogMatch: (id: number, decision: 'approved' | 'rejected', representativeProductId?: number) =>
+    req<{ result: { ok: true; catalogProductId: number | null } }>(`/catalog/matches/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ decision, representative_product_id: representativeProductId ?? null }),
+    }),
   readAll: () => req<{ ok: boolean }>('/notifications/read-all', { method: 'POST' }),
   readOne: (id: number) => req<{ ok: boolean }>(`/notifications/${id}/read`, { method: 'POST' }),
   clearNotifications: () => req<{ ok: boolean }>('/notifications', { method: 'DELETE' }),

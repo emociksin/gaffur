@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 7 Tamamlandı, Faz 8 Sırada
+# Gaffur Handoff — Faz 8 Tamamlandı, Üretim Ölçümü Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (90 test — önceki paket + Faz 7 kanal kuyruğu, Web Push, fırsat ve uyum), GitHub Actions CI
+- **Test:** Vitest (99 test — önceki paket + Faz 8 katalog kimliği, puanlama ve onay kuyruğu), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -72,7 +72,11 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 8
+## Sıradaki İş — Faz 8 Üretim Doğrulaması
+
+Planda tanımlı yeni bir Faz 9 yoktur. Sıradaki iş, canlı katalog kuyruğunda en az 30 insan kararı
+biriktirip ölçülen precision değerini ≥ %98 kapısından geçirmek; yanlış eşleşme örneklerine göre
+eşikleri sürümleyerek ayarlamak ve katalog kapsamını birden çok satıcılı gerçek ürünlerle büyütmektir.
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -145,16 +149,24 @@ Harici kanal operasyon notu: kod ve kuyruk tamamdır; gerçek e-posta/Web Push t
 Coolify'da `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` ve
 `VAPID_SUBJECT` tanımlanmalıdır. Anahtar yokken sistem teslimatı “gönderildi” saymaz.
 
-### Faz 8 — Katalog + Ürün Eşleştirme **← sıradaki**
-- [ ] GTIN/EAN/MPN kesin eşleşme ve kod güvenilirlik kontrolü
-- [ ] Türkçe başlık normalizasyonu: marka, model ve varyant eksenleri
-- [ ] Benzerlik + fiyat aralığı güven skoru; düşük güveni insan onay kuyruğuna alma
-- [ ] Match rate ve precision ölçümü (precision hedefi ≥ %98)
-- [ ] Scrapy/Python servis sınırı için ADR ve yalnız arama/eşleştirme hattında spike
+### Faz 8 — Katalog + Ürün Eşleştirme ✅
+- [x] GTIN/EAN kontrol basamağı ve MPN marka/biçim güvenilirlik kapısı
+- [x] Türkçe başlık normalizasyonu: marka, model, kapasite ve renk varyant eksenleri
+- [x] Başlık/model + fiyat aralığı güven skoru; bütün adaylar için insan onay kuyruğu
+- [x] İnsan onayıyla kanonik katalog grubu; onaydan önce hiçbir otomatik birleşme yok
+- [x] Match rate ve gözden geçirilmiş precision ölçümü; ≥ %98 hedefi için en az 30 karar kapısı
+- [x] Scrapy/Python servis sınırı ADR'si ve çalıştırılabilir, fail-closed JSONL sözleşme spike'ı
+
+Faz 8 tablo seti: `product_identities`, `product_match_candidates`, `catalog_products`,
+`catalog_memberships`. SQLite migration `0015_phase8_catalog.sql`, Postgres migration
+`0012_phase8_catalog.pg.sql`. Günlük cron adayları yeniler; onaylanan/reddedilen kararlar korunur.
+Yönetim arayüzünde **Katalog** sekmesi kimlik ayrıntılarını, skor parçalarını, kuyruğu ve ölçümleri
+gösterir. Deterministik model/başlık benzerliği ilk yüksek-precision sürümüdür; harici embedding
+servisi etiketli veri ve ölçülmüş bir kazanım olmadan üretime eklenmedi.
 
 ### Faz 7-8 Özet
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
-- **Faz 8:** Katalog + ürün eşleştirme (Python servisi, Scrapy, embedding)
+- **Faz 8:** İnsan onaylı katalog + ürün eşleştirme; Scrapy/Python için izole sözleşme spike'ı
 
 ## Kritik Kararlar (değiştirilmemeli)
 
@@ -173,7 +185,7 @@ Coolify'da `RESEND_API_KEY`, `EMAIL_FROM`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KE
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (90 test)
+npm test           # vitest (99 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```
@@ -184,6 +196,7 @@ npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 - **Genel yurtdışı ürünün vergisi GTİP olmadan hesaplanamaz:** UI bilinmeyen vergi/masrafı kesin toplam gibi göstermez
 - **Canonical origin:** Prod'da `PUBLIC_BASE_URL=https://gaffur.net` verilmelidir; verilmezse güvenli varsayılan zaten `https://gaffur.net` olur
 - **Faz 7 dış kanal secret'ları opsiyonel ama gerçek teslimat için gerekli:** yoksa uygulama içi bildirim çalışır, e-posta/Web Push kapalı görünür
+- **Faz 8 precision henüz canlıda kanıtlanmış değildir:** hedef ≥ %98 ancak en az 30 yönetici kararı sonrasında değerlendirilir; örneklem dolmadan arayüz başarı iddiası göstermez
 - **Feed araştırması yapılmadı** (Trendyol/HB gelir ortaklığı programları)
 - Mevcut canlı veri: 4 ürün, max 8 fiyat noktası — göç riski neredeyse sıfır
 

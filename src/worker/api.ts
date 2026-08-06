@@ -18,6 +18,7 @@ import {
 } from './notifications/delivery';
 import { emailConfigured, escapeHtml, sendEmail } from './notifications/email';
 import { isAllowedPushEndpoint, webPushPublicConfig } from './notifications/web-push';
+import { getCatalogMetrics, refreshCatalogMatches, reviewMatchCandidate } from './catalog/matcher';
 
 const api = new Hono<{ Bindings: Env }>();
 
@@ -1108,6 +1109,103 @@ api.post('/compliance/refresh', async (c) => {
 
 api.post('/opportunities/refresh', async (c) => {
   return c.json({ result: await refreshOpportunityFeed(c.env, now()) });
+});
+
+// ---- Faz 8: insan onayli katalog ve urun eslestirme ----
+api.get('/catalog/matches', async (c) => {
+  const requestedStatus = String(c.req.query('status') ?? 'pending');
+  const status = ['pending', 'approved', 'rejected', 'stale', 'all'].includes(requestedStatus)
+    ? requestedStatus
+    : 'pending';
+  const limit = Math.max(1, Math.min(200, Number(c.req.query('limit') ?? 100)));
+  const where = status === 'all' ? '' : 'WHERE c.status = ?';
+  const statement = c.env.DB.prepare(
+    `SELECT c.*,
+            pa.title AS a_title, pa.site AS a_site, pa.current_price AS a_current_price, pa.currency AS a_currency,
+            ia.normalized_brand AS a_normalized_brand, ia.model_key AS a_model_key, ia.variant_key AS a_variant_key,
+            ia.gtin_normalized AS a_gtin_normalized, ia.gtin_valid AS a_gtin_valid,
+            ia.mpn_normalized AS a_mpn_normalized, ia.mpn_reliable AS a_mpn_reliable,
+            ia.identity_quality AS a_identity_quality,
+            pb.title AS b_title, pb.site AS b_site, pb.current_price AS b_current_price, pb.currency AS b_currency,
+            ib.normalized_brand AS b_normalized_brand, ib.model_key AS b_model_key, ib.variant_key AS b_variant_key,
+            ib.gtin_normalized AS b_gtin_normalized, ib.gtin_valid AS b_gtin_valid,
+            ib.mpn_normalized AS b_mpn_normalized, ib.mpn_reliable AS b_mpn_reliable,
+            ib.identity_quality AS b_identity_quality
+     FROM product_match_candidates c
+     JOIN products pa ON pa.id = c.product_a_id
+     JOIN products pb ON pb.id = c.product_b_id
+     JOIN product_identities ia ON ia.product_id = c.product_a_id
+     JOIN product_identities ib ON ib.product_id = c.product_b_id
+     ${where}
+     ORDER BY c.score DESC, c.updated_at DESC
+     LIMIT ?`
+  );
+  const rows = status === 'all' ? await statement.bind(limit).all<any>() : await statement.bind(status, limit).all<any>();
+  const matches = (rows.results ?? []).map((row: any) => ({
+    id: row.id,
+    score: row.score,
+    score_band: row.score_band,
+    score_version: row.score_version,
+    exact_code_kind: row.exact_code_kind,
+    title_score: row.title_score,
+    model_score: row.model_score,
+    price_score: row.price_score,
+    reasons: (() => { try { return JSON.parse(row.reasons_json); } catch { return []; } })(),
+    status: row.status,
+    review_note: row.review_note,
+    reviewed_at: row.reviewed_at,
+    updated_at: row.updated_at,
+    product_a: {
+      id: row.product_a_id, title: row.a_title, site: row.a_site,
+      current_price: row.a_current_price, currency: row.a_currency,
+      normalized_brand: row.a_normalized_brand, model_key: row.a_model_key,
+      variant_key: row.a_variant_key, gtin_normalized: row.a_gtin_normalized,
+      gtin_valid: row.a_gtin_valid, mpn_normalized: row.a_mpn_normalized,
+      mpn_reliable: row.a_mpn_reliable, identity_quality: row.a_identity_quality,
+    },
+    product_b: {
+      id: row.product_b_id, title: row.b_title, site: row.b_site,
+      current_price: row.b_current_price, currency: row.b_currency,
+      normalized_brand: row.b_normalized_brand, model_key: row.b_model_key,
+      variant_key: row.b_variant_key, gtin_normalized: row.b_gtin_normalized,
+      gtin_valid: row.b_gtin_valid, mpn_normalized: row.b_mpn_normalized,
+      mpn_reliable: row.b_mpn_reliable, identity_quality: row.b_identity_quality,
+    },
+  }));
+  return c.json({ matches });
+});
+
+api.get('/catalog/metrics', async (c) => c.json({ metrics: await getCatalogMetrics(c.env) }));
+
+api.post('/catalog/matches/refresh', async (c) => {
+  return c.json({ result: await refreshCatalogMatches(c.env, now()) });
+});
+
+api.post('/catalog/matches/:id/review', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'Geçerli aday kimliği gerekli' }, 400);
+  const body = await c.req.json<{
+    decision?: string;
+    representative_product_id?: number | null;
+    note?: string | null;
+  }>().catch(() => ({} as {
+    decision?: string;
+    representative_product_id?: number | null;
+    note?: string | null;
+  }));
+  if (body.decision !== 'approved' && body.decision !== 'rejected') {
+    return c.json({ error: 'Karar approved veya rejected olmalıdır' }, 400);
+  }
+  try {
+    const result = await reviewMatchCandidate(c.env, id, body.decision, {
+      representativeProductId: body.representative_product_id,
+      note: body.note,
+    });
+    return c.json({ result });
+  } catch (error: any) {
+    const message = String(error?.message ?? error);
+    return c.json({ error: message }, message.includes('bulunamadı') ? 404 : 409);
+  }
 });
 
 api.get('/export/compliance.csv', async (c) => {

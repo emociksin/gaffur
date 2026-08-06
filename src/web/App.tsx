@@ -7,11 +7,12 @@ import { Dashboard } from './pages/Dashboard';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CompliancePage } from './pages/CompliancePage';
+import { CatalogPage } from './pages/CatalogPage';
 import { AddModal } from './components/AddModal';
 import { DetailModal } from './components/DetailModal';
 import { AdminProvider, BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Spinner, useToast } from './ui';
 
-type Tab = 'panel' | 'bildirim' | 'uyum' | 'ayar';
+type Tab = 'panel' | 'bildirim' | 'katalog' | 'uyum' | 'ayar';
 
 export default function App() {
   const isAdminPath = isAdminPathname(window.location.pathname);
@@ -201,6 +202,9 @@ export default function App() {
             <button className={tab === 'uyum' ? 'on' : ''} onClick={() => setTab('uyum')}>
               Uyum
             </button>
+            <button className={tab === 'katalog' ? 'on' : ''} onClick={() => setTab('katalog')}>
+              Katalog
+            </button>
           </nav>
         ) : (
           <p className="hdr-tagline">Doğrulanmış fiyatı, stoku ve geçmişi tek yerde gör</p>
@@ -240,6 +244,7 @@ export default function App() {
         )}
         {activeTab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
         {activeTab === 'uyum' && <CompliancePage onOpenProduct={setDetailId} />}
+        {activeTab === 'katalog' && <CatalogPage onOpenProduct={setDetailId} />}
         {activeTab === 'ayar' && <SettingsPage open={auth.open} />}
       </main>
 

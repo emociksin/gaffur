@@ -8,6 +8,7 @@ import { runQueuedJobs } from './crawl/worker';
 import { refreshOpportunityFeedIfDue } from './intelligence/opportunities';
 import { refreshComplianceIfDue } from './intelligence/compliance';
 import { dispatchPendingNotifications, type DispatchReport } from './notifications/delivery';
+import { refreshCatalogMatchesIfDue } from './catalog/matcher';
 
 export interface CronReport {
   products: number;
@@ -16,6 +17,7 @@ export interface CronReport {
   listings: number;
   opportunities: number;
   compliance: number;
+  catalogCandidates: number;
   deliveries: DispatchReport;
 }
 
@@ -25,11 +27,13 @@ export async function runScheduled(env: Env): Promise<CronReport> {
   const crawl = await runQueuedJobs(env);
   const opportunities = await refreshOpportunityFeedIfDue(env, t);
   const compliance = await refreshComplianceIfDue(env, t);
+  const catalog = await refreshCatalogMatchesIfDue(env, t);
   const deliveries = await dispatchPendingNotifications(env, t);
   return {
     ...crawl,
     opportunities: opportunities.count,
     compliance: compliance.count,
+    catalogCandidates: catalog.candidates,
     deliveries,
   };
 }

@@ -197,6 +197,56 @@ export interface ComplianceAssessment {
   currency: string;
 }
 
+export interface CatalogMatchProduct {
+  id: number;
+  title: string;
+  site: string;
+  current_price: number | null;
+  currency: string;
+  normalized_brand: string | null;
+  model_key: string | null;
+  variant_key: string | null;
+  gtin_normalized: string | null;
+  gtin_valid: number;
+  mpn_normalized: string | null;
+  mpn_reliable: number;
+  identity_quality: number;
+}
+
+export interface CatalogMatchCandidate {
+  id: number;
+  score: number;
+  score_band: 'high' | 'medium' | 'low';
+  score_version: string;
+  exact_code_kind: 'gtin' | 'mpn' | null;
+  title_score: number;
+  model_score: number;
+  price_score: number;
+  reasons: string[];
+  status: 'pending' | 'approved' | 'rejected' | 'stale';
+  review_note: string | null;
+  reviewed_at: number | null;
+  updated_at: number;
+  product_a: CatalogMatchProduct;
+  product_b: CatalogMatchProduct;
+}
+
+export interface CatalogMetrics {
+  totalProducts: number;
+  eligibleProducts: number;
+  matchedProducts: number;
+  matchRate: number;
+  pendingCandidates: number;
+  reviewedCandidates: number;
+  approvedCandidates: number;
+  rejectedCandidates: number;
+  reviewedPrecision: number | null;
+  precisionSampleReady: boolean;
+  precisionTargetMet: boolean | null;
+  precisionTarget: number;
+  minimumReviewSample: number;
+}
+
 export interface Watch {
   id: number;
   user_id: number;

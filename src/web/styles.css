@@ -513,6 +513,72 @@ a:hover {
 }
 .compliance-meta a { color: var(--acc-deep); }
 
+/* ---------- Faz 8: katalog eslestirme ---------- */
+.catalog-page { display: grid; gap: 16px; }
+.catalog-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.catalog-head h2 { margin: 5px 0 7px; font-size: 1.35rem; }
+.catalog-head p { max-width: 760px; color: var(--mut); font-size: 0.82rem; line-height: 1.55; }
+.catalog-head .btn { align-self: flex-start; white-space: nowrap; }
+.catalog-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+.catalog-metrics > div {
+  display: grid;
+  gap: 4px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  background: var(--card);
+}
+.catalog-metrics span { color: var(--mut); font-size: 0.73rem; text-transform: uppercase; letter-spacing: .04em; }
+.catalog-metrics b { font-family: var(--serif); font-size: 1.45rem; }
+.catalog-metrics small { color: var(--mut); font-size: 0.7rem; }
+.catalog-queue { display: grid; gap: 12px; }
+.catalog-candidate {
+  display: grid;
+  gap: 13px;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--line2);
+  background: var(--card);
+}
+.catalog-high { border-left-color: var(--green); }
+.catalog-medium { border-left-color: var(--acc); }
+.catalog-low { border-left-color: var(--red); }
+.catalog-candidate > header,
+.catalog-candidate > footer,
+.catalog-score-parts,
+.catalog-reasons { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; }
+.catalog-candidate > header { justify-content: space-between; }
+.catalog-candidate > header > div:first-child { display: flex; align-items: baseline; gap: 9px; }
+.catalog-candidate > header b { font-family: var(--serif); font-size: 1.2rem; }
+.catalog-candidate > header span,
+.catalog-score-parts span,
+.catalog-reasons span { color: var(--mut); font-size: 0.72rem; }
+.catalog-pair { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.catalog-pair-mark { align-self: center; color: var(--acc-deep); font-size: 1.25rem; }
+.catalog-identity { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--line); background: var(--card2); }
+.catalog-identity > button { border: 0; padding: 0; background: transparent; font-weight: 700; text-align: left; cursor: pointer; }
+.catalog-identity-meta { display: flex; flex-wrap: wrap; gap: 7px 12px; color: var(--mut); font-size: 0.72rem; }
+.catalog-identity-meta b { color: var(--txt); }
+.catalog-identity dl { display: grid; gap: 3px; }
+.catalog-identity dl > div { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 7px; font-size: 0.7rem; }
+.catalog-identity dt { color: var(--mut); }
+.catalog-identity dd { overflow-wrap: anywhere; }
+.catalog-reasons span { padding: 3px 6px; border: 1px solid var(--line); background: var(--bg2); }
+.catalog-candidate > footer { justify-content: flex-end; }
+
+@media (max-width: 760px) {
+  .catalog-head { flex-direction: column; }
+  .catalog-metrics { grid-template-columns: 1fr; }
+  .catalog-pair { grid-template-columns: 1fr; }
+  .catalog-pair-mark { justify-self: center; transform: rotate(90deg); }
+}
+
 /* ---------- filtre cubugu ---------- */
 .filterbar {
   display: flex;

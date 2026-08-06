@@ -8,8 +8,8 @@ vurgu rengi amber (#FFB020).
 ## Mimari
 
 ```
-src/worker/          Cloudflare Worker (Hono API + cron)
-  index.ts           fetch (Hono) + scheduled (cron) girişleri
+src/worker/          Node üzerinde çalışan Hono API + cron uygulama katmanı
+  index.ts           Hono uygulaması ve route bağlama girişi
   api.ts             REST rotaları (/api/*)
   seo.ts             Public ürün/kategori SSR, JSON-LD, sitemap ve JSON uçları
   auth.ts            Tek parola + HMAC imzalı cookie (admin) + çok kullanıcılı hesap (users/sessions)
@@ -23,6 +23,7 @@ src/worker/          Cloudflare Worker (Hono API + cron)
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
   notifications/     E-posta, standart Web Push/VAPID, tercih ve teslimat kuyruğu
   intelligence/      Baseline/stok, landed cost, günlük fırsat ve 10 günlük iç uyum hesabı
+  catalog/           Türkçe kimlik normalizasyonu, GTIN/MPN kontrolü, eşleştirme puanı ve onaylı katalog grupları
   scrape/
     crawlee.ts       CheerioCrawler transport; disksiz storage + her redirect'te SSRF doğrulama
     registry.ts      Site → kararlı parser sürümü dispatch'i
@@ -90,6 +91,18 @@ yalnız `/yonetim` içindeki **Uyum** sekmesindedir; hukuki “ihlal” kararı 
 verir. Birincil kaynak ve sınırlamalar `docs/phase7-legal-sources.md` içindedir. Dış kanal
 sağlayıcıları yoksa teslimat `sent` olmaz; yapılandırma bekleyen kuyruk olarak kalır.
 
+Faz 8 katalog katmanı `src/worker/catalog/` altındadır. Ürün başlığı Türkçe karakterleri ve
+yaygın renk/kapasite biçimleriyle normalize edilir; GTIN yalnız GS1 kontrol basamağı geçerliyse,
+MPN ise harf+rakam ve marka tutarlılığı kapılarını geçerse kesin kod sinyali sayılır. Marka veya
+varyant çatışması eşleşmeyi sert biçimde reddeder. Başlık/model/fiyat puanı eşiği geçen adaylar
+`product_match_candidates` insan kuyruğuna düşer; ilk sürümde yüksek puanlı aday bile otomatik
+birleşmez. Yönetici **Katalog** sekmesinde onay verdiğinde `catalog_products` ve
+`catalog_memberships` kanonik grubu oluşur. Match rate ile insan kararlarından türetilen precision
+birlikte gösterilir; %98 hedefi en az 30 incelenmiş aday olmadan geçmiş sayılmaz. Günlük cron
+kimlik ve adayları yeniler, onay/ret kararlarını korur. Scrapy/Python sınırı ve çalıştırılabilir
+JSONL sözleşme spike'ı `docs/adr-008-scrapy-matching-boundary.md` içindedir; üretime ikinci runtime
+eklenmemiştir.
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık
@@ -126,7 +139,7 @@ sağlayıcıları yoksa teslimat `sent` olmaz; yapılandırma bekleyen kuyruk ol
 npm run dev        # sadece Vite (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm test           # vitest (90 test; tüm fazlar + Faz 7 teslimat/fırsat/uyum)
+npm test           # vitest (99 test; tüm fazlar + Faz 8 katalog/eşleştirme)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
 ```

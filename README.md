@@ -20,6 +20,9 @@ Docker/Coolify üzerinde çalışır.
   cron içinde hesaplar; public istek sırasında yeniden hesaplamaz.
 - **İç uyum aracı:** Yönetimde önceki 10 günlük fiyat kanıtını tutarlı/şüpheli/yetersiz olarak
   inceler ve CSV verir; kamuya hukuki ihlal rozeti yayımlamaz.
+- **İnsan onaylı katalog:** Geçerli GTIN/MPN, Türkçe marka/model/varyant normalizasyonu,
+  başlık ve fiyat tutarlılığıyla eşleştirme adayı üretir. Yüksek puanlı adaylar dahil hiçbir ürün
+  yönetici onayı olmadan aynı kanonik gruba alınmaz; match rate ve örneklem kapılı precision ölçülür.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
 - **Public ürün sayfaları:** Sunucudan tam HTML, Product/AggregateOffer yapılandırılmış verisi,
   günlük grafik + tablo, kanonik ürün/kategori adresleri ve segmentli sitemapler.
