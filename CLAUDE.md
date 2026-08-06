@@ -1,8 +1,8 @@
-# Gaffur — gaffur.net Fiyat Takip Uygulaması
+# Gaffur — gaffur.net Fiyat Takip → Karşılaştırma Platformu
 
-Ürün/kategori fiyatlarını izleyen, düşüşte Telegram + uygulama içi bildirim gönderen,
-fiyat geçmişini grafikle sunan kişisel web uygulaması. **Cloudflare Workers + D1 + Cron
-Trigger** üzerinde çalışır; sunucu yok, ücretsiz katman yeterli. Türkçe arayüz, koyu tema,
+Ürün fiyatlarını izleyen, düşüşte Telegram + uygulama içi bildirim gönderen,
+fiyat geçmişini grafikle sunan web uygulaması. **Node/Docker (Coolify)** üzerinde çalışır;
+DATABASE_URL varsa Postgres, yoksa SQLite. Türkçe arayüz, koyu tema,
 vurgu rengi amber (#FFB020).
 
 ## Mimari
@@ -11,7 +11,7 @@ vurgu rengi amber (#FFB020).
 src/worker/          Cloudflare Worker (Hono API + cron)
   index.ts           fetch (Hono) + scheduled (cron) girişleri
   api.ts             REST rotaları (/api/*)
-  auth.ts            Tek parola + HMAC imzalı cookie (PASSWORD secret'i yoksa açık mod)
+  auth.ts            Tek parola + HMAC imzalı cookie (admin) + çok kullanıcılı hesap (users/sessions)
   cron.ts            15 dk'da bir: sırası gelen ürünler (parti 10) + oto kategori keşfi (6 saatte bir, parti 2)
   db.ts              D1 yardımcıları, settings varsayılanları
   telegram.ts        sendMessage + getUpdates ile chat-id keşfi
