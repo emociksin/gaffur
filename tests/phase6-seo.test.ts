@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { LocalD1 } from '../src/server/d1';
 import { app } from '../src/worker/index';
 import { loadPublicProduct, slugify } from '../src/worker/seo';
+import { isAdminPathname, publicCategoryPath, publicProductPath } from '../src/shared/routes';
 
 const shell = `<!doctype html><html lang="tr"><head>
   <meta name="description" content="Gaffur" /><title>Gaffur</title>
@@ -85,6 +86,15 @@ describe('Faz 6 SSR, yapilandirilmis veri ve indeksleme', () => {
 
   it('Turkce basligi kararli ASCII slug yapar', () => {
     expect(slugify('Çok İyi Telefon')).toBe('cok-iyi-telefon');
+  });
+
+  it('public ve yonetim yollarini birbirinden kesin ayirir', () => {
+    expect(isAdminPathname('/')).toBe(false);
+    expect(isAdminPathname('/yonetim-sahte')).toBe(false);
+    expect(isAdminPathname('/yonetim')).toBe(true);
+    expect(isAdminPathname('/yonetim/ayarlar')).toBe(true);
+    expect(publicProductPath({ id: 4, title: 'Çok İyi Telefon' })).toBe('/urun/4-cok-iyi-telefon');
+    expect(publicCategoryPath({ id: 2, name: 'Cep Telefonları' })).toBe('/kategori/2-cep-telefonlari');
   });
 
   it('iki teklif veya 30 gun gecmis kuraliyla indekslenebilirligi hesaplar', async () => {

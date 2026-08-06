@@ -19,6 +19,8 @@ Docker/Coolify üzerinde çalışır.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
 - **Public ürün sayfaları:** Sunucudan tam HTML, Product/AggregateOffer yapılandırılmış verisi,
   günlük grafik + tablo, kanonik ürün/kategori adresleri ve segmentli sitemapler.
+- **Ayrı vitrin ve yönetim:** `/` ziyaretçilere fiyat karşılaştırma vitrini sunar;
+  ürün ekleme, toplu kontrol, bildirimler ve ayarlar yalnız `/yonetim` yolundadır.
 - **Fiyat/stok zekâsı:** 30/90 günlük medyan, 10 günlük en düşük, %2 gürültü filtresi;
   stok değişiminde iki ardışık doğrulama ve `unknown` güvenliği.
 - **Kapıdaki maliyet:** Kargo/taksit verisi; yurtiçi, posta ve yolcu beraberinde maliyet

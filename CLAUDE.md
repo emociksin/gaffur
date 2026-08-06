@@ -41,9 +41,12 @@ Cron artık doğrudan tarama yapmaz: `scheduleDueJobs` kalıcı `crawl_jobs` kay
 üretir, `runQueuedJobs` atomik claim ile işleri çalıştırır. Kuyruk SQLite ve Postgres'te
 aynı SQL davranışını kullanır; aktif varlık başına yalnız bir queued/running iş olabilir.
 
-Frontend'de yönetici oturumu ile kullanıcı hesabı ayrıdır: gizli `/yonetim` yolu tek
-parolalı yönetimi açar; üst çubuktaki **Hesabım** akışı ise `users/sessions` tabanlı
-kayıt, giriş ve çıkışı yönetir (`gfr_u` çerezi).
+Frontend'de yönetici oturumu ile kullanıcı hesabı ayrıdır: `/` her zaman public fiyat
+vitrinidir; yönetici çerezi bulunsa bile operasyon kontrolleri burada gösterilmez. Gizli
+`/yonetim` yolu tek parolalı yönetimi açar ve ürün ekleme, toplu kontrol, bildirimler ile
+ayarları içerir. Üst çubuktaki **Hesabım** akışı ise `users/sessions` tabanlı kayıt, giriş ve
+çıkışı yönetir (`gfr_u` çerezi). Public kart başlıkları kanonik `/urun/{id}-{slug}` sayfasına,
+kategori bağlantıları `/kategori/{id}-{slug}` sayfasına gider.
 
 Kullanıcılar ürün kartından kendi `watches` listelerine ürün ekleyip çıkarır. Watch
 eşikleri her fiyat güncellemesinde değerlendirilir; kişisel bildirimler
@@ -113,7 +116,7 @@ origin'i belirler (prod değeri: `https://gaffur.net`).
 npm run dev        # sadece Vite (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm test           # vitest (83 test; tüm fazlar + SSR/SEO)
+npm test           # vitest (84 test; tüm fazlar + SSR/SEO)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
 ```

@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (83 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost + SSR/SEO), GitHub Actions CI
+- **Test:** Vitest (84 test — parsePrice + SSRF + Crawlee + kullanıcı + queue/rate + parser health + fiyat/stok + landed cost + SSR/SEO), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -123,6 +123,8 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 - [x] Yönetici lojistik girişi ve mevzuat-kodlu maliyet snapshot API'ı
 
 ### Faz 6 — Public SSR + SEO ✅
+- [x] `/` ziyaretçi vitrini ile `/yonetim` operasyon panelini ayırma; ürün ekleme/ayarlar/toplu kontrol yalnız yönetimde
+- [x] Public ürün kartlarını kanonik SSR ürün sayfalarına, kategori bağlantılarını SSR kategori sayfalarına bağlama
 - [x] `/urun/{id}-{slug}` ve `/kategori/{id}-{slug}` sayfalarını mevcut tasarım diliyle sunucudan tam HTML üretme
 - [x] Product + AggregateOffer + BreadcrumbList; kategoride ItemList; uydurma Review/Rating ve Merchant listing yok
 - [x] Görünür SVG fiyat grafiği + günlük HTML tablo + min/max/ortalama/medyan düz metinleri
@@ -158,7 +160,7 @@ Hepsiburada 2 sn, diğer domainler 1 sn. Ardışık hatalarda bekleme ikiye katl
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (83 test)
+npm test           # vitest (84 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```

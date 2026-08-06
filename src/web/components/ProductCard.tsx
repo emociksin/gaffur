@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Category, Product } from '../../shared/types';
+import { publicProductPath } from '../../shared/routes';
 import { changePct, money, pctFmt, timeAgo } from '../format';
 import { api } from '../api';
 import { Sparkline } from './Chart';
@@ -80,7 +81,18 @@ export function ProductCard({
             {!p.active && <span className="mini-badge">durduruldu</span>}
           </div>
           <h4 className="card-title" title={p.title}>
-            {p.title}
+            <a
+              href={publicProductPath(p)}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isAdmin) {
+                  event.preventDefault();
+                  onOpen();
+                }
+              }}
+            >
+              {p.title}
+            </a>
           </h4>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { Category, Product, Summary } from '../../shared/types';
+import { publicCategoryPath } from '../../shared/routes';
 import { changePct, money, pctFmt, timeAgo } from '../format';
 import { IconBox, IconPlus, IconSearch, IconRefresh, Spinner, useIsAdmin, useToast } from '../ui';
 import { ProductCard } from '../components/ProductCard';
@@ -83,7 +84,22 @@ export function Dashboard({
 
   return (
     <div className="dash">
-      {summary && (
+      {!isAdmin && (
+        <section className="storefront-hero">
+          <div>
+            <span className="storefront-kicker">Fiyat karşılaştırma · stok doğrulama · fiyat geçmişi</span>
+            <h1>Bir ürünün fiyatına değil, gerçeğine bak.</h1>
+            <p>İzlenen mağazalardaki güncel teklifleri, stok durumunu ve geçmiş fiyat hareketini karşılaştır.</p>
+          </div>
+          <div className="storefront-proof" aria-label="Gaffur ilkeleri">
+            <span>Doğrudan satış yok</span>
+            <span>Uydurma puan yok</span>
+            <span>Son kontrol zamanı görünür</span>
+          </div>
+        </section>
+      )}
+
+      {isAdmin && summary && (
         <section className="stats">
           <div className="stat">
             <span className="stat-n">{summary.active}</span>
@@ -100,6 +116,23 @@ export function Dashboard({
           <div className="stat">
             <span className="stat-n stat-dim">{timeAgo(summary.lastCheckAt)}</span>
             <span className="stat-l">son kontrol</span>
+          </div>
+        </section>
+      )}
+
+      {!isAdmin && summary && (
+        <section className="stats storefront-stats" aria-label="Güncel kapsam">
+          <div className="stat">
+            <span className="stat-n">{summary.active}</span>
+            <span className="stat-l">aktif ürün</span>
+          </div>
+          <div className="stat">
+            <span className="stat-n stat-green">{summary.drops7d}</span>
+            <span className="stat-l">7 günde fiyat düşüşü</span>
+          </div>
+          <div className="stat">
+            <span className="stat-n stat-dim">{timeAgo(summary.lastCheckAt)}</span>
+            <span className="stat-l">son veri kontrolü</span>
           </div>
         </section>
       )}
@@ -126,17 +159,27 @@ export function Dashboard({
           <button className={`chip ${catFilter === 'all' ? 'on' : ''}`} onClick={() => setCatFilter('all')}>
             Tümü {products ? `(${products.length})` : ''}
           </button>
-          {cats.map((c) => (
-            <button
-              key={c.id}
-              className={`chip ${catFilter === c.id ? 'on' : ''}`}
-              style={{ ['--chip' as any]: c.color }}
-              onClick={() => setCatFilter(c.id)}
-            >
-              <span className="chip-dot" />
-              {c.name} ({c.product_count ?? 0})
-            </button>
-          ))}
+          {cats.map((c) => isAdmin ? (
+              <button
+                key={c.id}
+                className={`chip ${catFilter === c.id ? 'on' : ''}`}
+                style={{ ['--chip' as any]: c.color }}
+                onClick={() => setCatFilter(c.id)}
+              >
+                <span className="chip-dot" />
+                {c.name} ({c.product_count ?? 0})
+              </button>
+            ) : (
+              <a
+                key={c.id}
+                className={`chip ${catFilter === c.id ? 'on' : ''}`}
+                style={{ ['--chip' as any]: c.color }}
+                href={publicCategoryPath(c)}
+              >
+                <span className="chip-dot" />
+                {c.name} ({c.product_count ?? 0})
+              </a>
+            ))}
           {products && products.some((p) => p.category_id == null) && cats.length > 0 && (
             <button className={`chip ${catFilter === 'none' ? 'on' : ''}`} onClick={() => setCatFilter('none')}>
               Kategorisiz

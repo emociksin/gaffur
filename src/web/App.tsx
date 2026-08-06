@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Category, Product, Summary, Watch } from '../shared/types';
+import { isAdminPathname, publicProductPath } from '../shared/routes';
 import { api, type UserAccount } from './api';
 import { AccountModal, Login } from './Login';
 import { Dashboard } from './pages/Dashboard';
@@ -12,6 +13,7 @@ import { AdminProvider, BrandSign, IconBell, IconGear, IconPlus, IconRefresh, Sp
 type Tab = 'panel' | 'bildirim' | 'ayar';
 
 export default function App() {
+  const isAdminPath = isAdminPathname(window.location.pathname);
   const toast = useToast();
   const [auth, setAuth] = useState<{
     loading: boolean;
@@ -34,7 +36,7 @@ export default function App() {
   const [watches, setWatches] = useState<Watch[]>([]);
   // Yonetim gizli bir adreste: /yonetim. Ana sayfada giris duğmesi YOK —
   // ziyaretcinin isine yaramaz, sadece "burada bir panel var" diye bagirir.
-  const [showLogin, setShowLogin] = useState(() => window.location.pathname === '/yonetim');
+  const [showLogin, setShowLogin] = useState(() => isAdminPath);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [checkingAll, setCheckingAll] = useState<{ done: number } | null>(null);
   const checkingRef = useRef(false);
@@ -136,9 +138,9 @@ export default function App() {
     );
   }
 
-  // Ziyaretci siteyi gezebilir VE urun ekleyebilir. Yonetim (silme, ayarlar,
-  // bildirimler, toplu kontrol) parola ister.
-  const isAdmin = auth.authed || auth.open;
+  // Ana sayfa ziyaretci vitrinidir. Ekleme, silme, ayarlar ve toplu kontrol
+  // yalnizca gizli /yonetim yolunda ve yetkili oturumda gosterilir.
+  const isAdmin = isAdminPath && (auth.authed || auth.open);
 
   const leaveAdminUrl = () => {
     if (window.location.pathname !== '/') window.history.replaceState(null, '', '/');
@@ -149,7 +151,6 @@ export default function App() {
       <Login
         onSuccess={() => {
           setShowLogin(false);
-          leaveAdminUrl();
           setAuth((a) => ({ ...a, authed: true }));
           refresh();
         }}
@@ -164,12 +165,20 @@ export default function App() {
 
   const unread = summary?.unread ?? 0;
   const activeTab = isAdmin ? tab : 'panel'; // ziyaretci yalnizca panoyu gorur
+  const openProduct = (id: number) => {
+    if (isAdmin) {
+      setDetailId(id);
+      return;
+    }
+    const product = products?.find((item) => item.id === id);
+    if (product) window.location.assign(publicProductPath(product));
+  };
 
   return (
     <AdminProvider value={isAdmin}>
     <div className="app">
       <header className="hdr">
-        <div className="brand" onClick={() => setTab('panel')} role="button" tabIndex={0}>
+        <div className="brand" onClick={() => isAdmin ? setTab('panel') : window.location.assign('/')} role="button" tabIndex={0}>
           <BrandSign />
         </div>
         {isAdmin ? (
@@ -188,7 +197,7 @@ export default function App() {
             </button>
           </nav>
         ) : (
-          <p className="hdr-tagline">Ürün bağlantısını yapıştır, fiyatını senin yerine takip edelim</p>
+          <p className="hdr-tagline">Doğrulanmış fiyatı, stoku ve geçmişi tek yerde gör</p>
         )}
         <div className="hdr-actions">
           <button className="btn btn-ghost account-button" onClick={() => setShowAccount(true)}>
@@ -200,11 +209,12 @@ export default function App() {
               <span className="hide-sm">{checkingAll ? `Kontrol ediliyor… ${checkingAll.done}` : 'Şimdi Kontrol Et'}</span>
             </button>
           )}
-          {/* Urun ekleme herkese acik: gelen ziyaretci kendi urununu takibe alabilir */}
-          <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
-            <IconPlus size={16} />
-            <span className="hide-sm">Ürün Ekle</span>
-          </button>
+          {isAdmin && (
+            <button className="btn btn-primary" onClick={() => setShowAdd(true)}>
+              <IconPlus size={16} />
+              <span className="hide-sm">Ürün Ekle</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -214,7 +224,7 @@ export default function App() {
             products={products}
             cats={cats}
             summary={summary}
-            onOpenDetail={setDetailId}
+            onOpenDetail={openProduct}
             onAdd={() => setShowAdd(true)}
             refresh={refresh}
             watchedProductIds={new Set(watches.map((w) => w.product_id))}
@@ -225,7 +235,7 @@ export default function App() {
         {activeTab === 'ayar' && <SettingsPage open={auth.open} />}
       </main>
 
-      {showAdd && (
+      {showAdd && isAdmin && (
         <AddModal
           cats={cats}
           onClose={() => setShowAdd(false)}
@@ -235,7 +245,7 @@ export default function App() {
           }}
         />
       )}
-      {detailId != null && (
+      {detailId != null && isAdmin && (
         <DetailModal
           id={detailId}
           cats={cats}
