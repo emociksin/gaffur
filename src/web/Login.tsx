@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from './api';
+import { api, type UserAccount } from './api';
 import { BrandSign, Spinner } from './ui';
 
 export function Login({
@@ -92,6 +92,93 @@ export function SetupNotice({ onCancel }: { onCancel?: () => void }) {
           <button type="button" className="btn btn-ghost btn-block" onClick={onCancel}>
             Siteye dön
           </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function AccountModal({
+  user,
+  onClose,
+  onChanged,
+}: {
+  user: UserAccount | null;
+  onClose: () => void;
+  onChanged: (user: UserAccount | null) => void;
+}) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr('');
+    try {
+      if (mode === 'register') await api.userRegister(email, pw, consent);
+      else await api.userLogin(email, pw);
+      const session = await api.userMe();
+      onChanged(session.user ?? null);
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message ?? 'İşlem tamamlanamadı');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const logout = async () => {
+    setBusy(true);
+    setErr('');
+    try {
+      await api.userLogout();
+      onChanged(null);
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message ?? 'Çıkış yapılamadı');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="login-card account-card" role="dialog" aria-modal="true" aria-label="Kullanıcı hesabı">
+        <button className="account-close" type="button" onClick={onClose} aria-label="Kapat">×</button>
+        <BrandSign lg />
+        {user ? (
+          <>
+            <p className="login-sub">Hesabın açık</p>
+            <div className="account-email">{user.email}</div>
+            <p className="mut small">Takip ettiğin ürünleri bu hesapla yöneteceksin.</p>
+            {err && <div className="login-err">{err}</div>}
+            <button className="btn btn-ghost btn-block" onClick={logout} disabled={busy}>
+              {busy ? <Spinner size={15} /> : 'Çıkış yap'}
+            </button>
+          </>
+        ) : (
+          <form onSubmit={submit}>
+            <p className="login-sub">{mode === 'login' ? 'Takip listene giriş yap' : 'Ücretsiz hesap oluştur'}</p>
+            <div className="account-switch" role="tablist">
+              <button type="button" className={mode === 'login' ? 'on' : ''} onClick={() => { setMode('login'); setErr(''); }}>Giriş</button>
+              <button type="button" className={mode === 'register' ? 'on' : ''} onClick={() => { setMode('register'); setErr(''); }}>Kayıt</button>
+            </div>
+            <input type="email" placeholder="E-posta" value={email} onChange={(e) => setEmail(e.target.value)} autoFocus autoComplete="email" />
+            <input type="password" placeholder="Parola (en az 8 karakter)" value={pw} onChange={(e) => setPw(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
+            {mode === 'register' && (
+              <label className="account-consent">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+                <span>KVKK aydınlatma metnini okudum ve kabul ediyorum.</span>
+              </label>
+            )}
+            {err && <div className="login-err">{err}</div>}
+            <button className="btn btn-primary btn-block" disabled={busy || !email || pw.length < 8 || (mode === 'register' && !consent)}>
+              {busy ? <Spinner size={15} /> : mode === 'login' ? 'Giriş yap' : 'Hesap oluştur'}
+            </button>
+          </form>
         )}
       </div>
     </div>

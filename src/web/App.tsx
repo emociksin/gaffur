@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Category, Product, Summary } from '../shared/types';
-import { api } from './api';
-import { Login, SetupNotice } from './Login';
+import { api, type UserAccount } from './api';
+import { AccountModal, Login } from './Login';
 import { Dashboard } from './pages/Dashboard';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -29,6 +29,8 @@ export default function App() {
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [user, setUser] = useState<UserAccount | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
   // Yonetim gizli bir adreste: /yonetim. Ana sayfada giris duğmesi YOK —
   // ziyaretcinin isine yaramaz, sadece "burada bir panel var" diye bagirir.
   const [showLogin, setShowLogin] = useState(() => window.location.pathname === '/yonetim');
@@ -55,6 +57,7 @@ export default function App() {
         refresh(); // ziyaretci de listeyi gorur; okuma uclari herkese acik
       })
       .catch(() => setAuth({ loading: false, authed: false, open: false, configured: true }));
+    api.userMe().then((m) => setUser(m.user ?? null)).catch(() => setUser(null));
     const onUnauth = () => setAuth((a) => ({ ...a, authed: false }));
     window.addEventListener('gfr-unauthorized', onUnauth);
     return () => window.removeEventListener('gfr-unauthorized', onUnauth);
@@ -151,6 +154,9 @@ export default function App() {
           <p className="hdr-tagline">Ürün bağlantısını yapıştır, fiyatını senin yerine takip edelim</p>
         )}
         <div className="hdr-actions">
+          <button className="btn btn-ghost account-button" onClick={() => setShowAccount(true)}>
+            {user ? user.email : 'Hesabım'}
+          </button>
           {isAdmin && (
             <button className="btn btn-ghost" onClick={checkAll} disabled={!!checkingAll} title="Tüm ürünleri şimdi kontrol et">
               {checkingAll ? <Spinner size={15} /> : <IconRefresh size={16} />}
@@ -197,6 +203,9 @@ export default function App() {
           onClose={() => setDetailId(null)}
           refresh={refresh}
         />
+      )}
+      {showAccount && (
+        <AccountModal user={user} onClose={() => setShowAccount(false)} onChanged={setUser} />
       )}
 
       <footer className="ftr">

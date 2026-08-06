@@ -20,6 +20,12 @@ export class ApiError extends Error {
   }
 }
 
+export interface UserAccount {
+  id: number;
+  email: string;
+  role: string;
+}
+
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
@@ -45,6 +51,19 @@ export const api = {
   login: (password: string) => req<{ ok: boolean }>('/login', { method: 'POST', body: JSON.stringify({ password }) }),
   logout: () => req<{ ok: boolean }>('/logout', { method: 'POST' }),
   logoutAll: () => req<{ ok: boolean }>('/logout-all', { method: 'POST' }),
+
+  userMe: () => req<{ authed: boolean; user?: UserAccount }>('/auth/me'),
+  userLogin: (email: string, password: string) =>
+    req<{ ok: boolean; userId: number; role: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    }),
+  userRegister: (email: string, password: string, kvkkConsent: boolean) =>
+    req<{ ok: boolean; userId: number }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, kvkk_consent: kvkkConsent }),
+    }),
+  userLogout: () => req<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 
   summary: () => req<Summary>('/summary'),
   products: () => req<{ products: Product[] }>('/products'),

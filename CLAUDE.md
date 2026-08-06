@@ -28,6 +28,10 @@ public/              robots.txt, llms.txt, favicon (SEO dosyaları korunur)
 docs/                Mayıs 2026 holding-page dönemi arşivi
 ```
 
+Frontend'de yönetici oturumu ile kullanıcı hesabı ayrıdır: gizli `/yonetim` yolu tek
+parolalı yönetimi açar; üst çubuktaki **Hesabım** akışı ise `users/sessions` tabanlı
+kayıt, giriş ve çıkışı yönetir (`gfr_u` çerezi).
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık

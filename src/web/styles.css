@@ -1400,6 +1400,75 @@ input:not([type='color']):not([type='checkbox']) {
 .login-card input {
   text-align: center;
 }
+
+.account-card {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.account-card form {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.account-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.account-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--line);
+}
+
+.account-switch button {
+  padding: 9px;
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  cursor: pointer;
+}
+
+.account-switch button.on {
+  background: var(--acc);
+  color: var(--card);
+}
+
+.account-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--mut);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.account-consent input {
+  width: auto;
+  margin-top: 2px;
+}
+
+.account-email {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  overflow-wrap: anywhere;
+}
+
+.account-button {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .login-err {
   color: var(--red);
   font-size: 0.84rem;
