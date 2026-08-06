@@ -1,4 +1,4 @@
-# Gaffur Handoff — Faz 8 Tamamlandı, Üretim Ölçümü Sırada
+# Gaffur Handoff — Faz 9 Tamamlandı, Talep Sinyallerinden Ürün Keşfi Sırada
 
 ## Proje Nedir
 
@@ -9,7 +9,7 @@ gaffur.net — Fiyat takip → karşılaştırma platformu. Ürün URL'si ekle, 
 - **Backend:** TypeScript, Hono (API framework), Node.js + Docker (Coolify deploy)
 - **Frontend:** React 19 SPA (Vite), tek CSS dosyası (vintage "esnaf tabelası" teması)
 - **DB:** SQLite (varsayılan) veya Postgres (DATABASE_URL varsa). Migration'lar açılışta otomatik
-- **Test:** Vitest (99 test — önceki paket + Faz 8 katalog kimliği, puanlama ve onay kuyruğu), GitHub Actions CI
+- **Test:** Vitest (106 test — önceki paket + Faz 9 kaynaklı trend kataloğu), GitHub Actions CI
 - **Bağımlılık:** hono, react, react-dom, postgres — başka runtime bağımlılık YOK
 
 ## Dosya Yapısı
@@ -72,11 +72,12 @@ scripts/             Canlı test harness'ları, backfill script'leri
    - `POST /api/watches` (ürün takibe al)
    - `DELETE /api/watches/:id`
 
-## Sıradaki İş — Faz 8 Üretim Doğrulaması
+## Sıradaki İş — Talep Sinyalinden Gerçek Ürün Keşfi
 
-Planda tanımlı yeni bir Faz 9 yoktur. Sıradaki iş, canlı katalog kuyruğunda en az 30 insan kararı
-biriktirip ölçülen precision değerini ≥ %98 kapısından geçirmek; yanlış eşleşme örneklerine göre
-eşikleri sürümleyerek ayarlamak ve katalog kapsamını birden çok satıcılı gerçek ürünlerle büyütmektir.
+Faz 9 talep kataloğu fiyatı veya satıcı URL'si olmayan keşif sinyalleridir. Sıradaki iş, yönetimdeki
+50 sinyalden öncelik seçip erişilebilir satıcılarda gerçek ürün URL'lerini keşfetmek, onları normal
+`products/offers` hattına almak ve talep kaydıyla ilişkilendirmektir. Faz 8 üretim doğrulaması da
+devam eder: en az 30 insan kararıyla ölçülen precision ≥ %98 kapısından geçirilmelidir.
 
 ### Faz 2 Kapanış ✅
 - [x] Frontend: kullanıcı kayıt/giriş UI'ı + takip listesi (Hesabım modalı, ürün kartından takibe al/çıkar)
@@ -164,9 +165,23 @@ Yönetim arayüzünde **Katalog** sekmesi kimlik ayrıntılarını, skor parçal
 gösterir. Deterministik model/başlık benzerliği ilk yüksek-precision sürümüdür; harici embedding
 servisi etiketli veri ve ölçülmüş bir kazanım olmadan üretime eklenmedi.
 
-### Faz 7-8 Özet
+### Faz 9 — Google Trends Türkiye Teknoloji Talep Kataloğu ✅
+- [x] Türkiye / son 12 ay / Bilgisayarlar ve Elektronik Ürünler kapsamı Google Trends'te doğrulandı
+- [x] Ürün olmayan mağaza, vergi, video ve uygulama sorguları elendi; 50 ürün/kategori/marka/aksesuar sinyali kaynaklandı
+- [x] Her kayıtta kaynak terimi, kaynak içi sıra, göreli 0–100 değer veya yükseliş etiketi ve doğrulama URL'si tutuldu
+- [x] SQLite `0016_phase9_trend_catalog.sql` ve Postgres `0013_phase9_trend_catalog.pg.sql`
+- [x] Public talep kataloğu; 12 kayıtlık dengeli özet + 50 kaydın tamamını açma
+- [x] Yönetimde yayın/gizleme ve yalnız mevcut gerçek takip ürünüyle ilişkilendirme
+- [x] Mutlak arama hacmi veya Türkiye geneli 1–50 iddiası yok; metodoloji ve sınır arayüzde görünür
+
+Ayrıntılı kaynak ve 50 kayıt tablosu `docs/phase9-google-trends-methodology.md` içindedir. Google
+Trends API alpha genel erişimde olmadığı için çalışma zamanında Google taraması yoktur; 6 Ağustos
+2026 snapshot'ı deterministik ve idempotent seed olarak açılışta yüklenir.
+
+### Faz 7-9 Özet
 - **Faz 7:** Bildirim kanalları (e-posta, web push), fırsat akışı, uyum iç aracı
 - **Faz 8:** İnsan onaylı katalog + ürün eşleştirme; Scrapy/Python için izole sözleşme spike'ı
+- **Faz 9:** Google Trends kaynaklı 50 teknoloji talep sinyali; public katalog ve yönetim eşleştirmesi
 
 ## Kritik Kararlar (değiştirilmemeli)
 
@@ -178,6 +193,7 @@ servisi etiketli veri ve ölçülmüş bir kazanım olmadan üretime eklenmedi.
 | K5 | "Tüm satıcılar" iddiası kullanılmayacak, kapsam açıkça gösterilecek |
 | K6 | Uyum rozeti iç araç, public'te sadece veri gösterilir |
 | K7 | Workers hattı kapatıldı ✅ |
+| K8 | Google Trends değerleri yalnız kaynak içi göreli sinyaldir; mutlak hacim veya global 1–50 iddiası kurulmaz |
 
 ## Komutlar
 
@@ -185,7 +201,7 @@ servisi etiketli veri ve ölçülmüş bir kazanım olmadan üretime eklenmedi.
 npm run dev        # Vite dev server (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama)
 npm run check      # typecheck
-npm test           # vitest (99 test)
+npm test           # vitest (106 test)
 npx tsx scripts/probe.ts <url>         # tek URL test
 npx tsx scripts/backfill-offers.ts     # mevcut veri → offers tablosu
 ```

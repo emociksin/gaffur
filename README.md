@@ -23,6 +23,10 @@ Docker/Coolify üzerinde çalışır.
 - **İnsan onaylı katalog:** Geçerli GTIN/MPN, Türkçe marka/model/varyant normalizasyonu,
   başlık ve fiyat tutarlılığıyla eşleştirme adayı üretir. Yüksek puanlı adaylar dahil hiçbir ürün
   yönetici onayı olmadan aynı kanonik gruba alınmaz; match rate ve örneklem kapılı precision ölçülür.
+- **Türkiye teknoloji talep kataloğu:** Google Trends'in Türkiye/son 12 ay/teknoloji kapsamından
+  kaynaklanan 50 ürün, kategori, marka ve aksesuar sinyalini gösterir. Puanlar kaynak içi göreli
+  ilgidir; mutlak arama hacmi veya satış adedi gibi sunulmaz. Yönetici sinyali gerçek takip ürünüyle
+  ilişkilendirebilir.
 - **Geçmiş:** Fiyat grafiği (7g/30g/90g/1y), en düşük/en yüksek/ortalama, CSV dışa aktarım.
 - **Public ürün sayfaları:** Sunucudan tam HTML, Product/AggregateOffer yapılandırılmış verisi,
   günlük grafik + tablo, kanonik ürün/kategori adresleri ve segmentli sitemapler.

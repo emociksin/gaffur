@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { Category, Opportunity, Product, Summary } from '../../shared/types';
+import type { Category, Opportunity, Product, Summary, TrendCatalogItem, TrendCatalogMeta } from '../../shared/types';
 import { publicCategoryPath } from '../../shared/routes';
 import { changePct, money, pctFmt, timeAgo } from '../format';
 import { IconBox, IconPlus, IconSearch, IconRefresh, Spinner, useIsAdmin, useToast } from '../ui';
@@ -13,6 +13,8 @@ export function Dashboard({
   cats,
   summary,
   opportunities,
+  trendCatalog,
+  trendMeta,
   onOpenDetail,
   onAdd,
   refresh,
@@ -23,6 +25,8 @@ export function Dashboard({
   cats: Category[];
   summary: Summary | null;
   opportunities: Opportunity[];
+  trendCatalog: TrendCatalogItem[];
+  trendMeta: TrendCatalogMeta | null;
   onOpenDetail: (id: number) => void;
   onAdd: () => void;
   refresh: () => Promise<void>;
@@ -35,6 +39,25 @@ export function Dashboard({
   const [q, setQ] = useState('');
   const [sort, setSort] = useState<Sort>('new');
   const [refreshingCat, setRefreshingCat] = useState<number | null>(null);
+  const [showAllTrends, setShowAllTrends] = useState(false);
+
+  const trendPreview = useMemo(() => {
+    if (showAllTrends) return trendCatalog;
+    const perAnchor = new Map<string, number>();
+    return trendCatalog.filter((item) => {
+      const count = perAnchor.get(item.anchor_term) ?? 0;
+      if (count >= 2) return false;
+      perAnchor.set(item.anchor_term, count + 1);
+      return true;
+    }).slice(0, 12);
+  }, [showAllTrends, trendCatalog]);
+
+  const kindLabel: Record<TrendCatalogItem['catalog_kind'], string> = {
+    product_family: 'Ürün ailesi',
+    category: 'Kategori',
+    brand: 'Marka',
+    accessory: 'Aksesuar',
+  };
 
   const filtered = useMemo(() => {
     if (!products) return [];
@@ -157,6 +180,52 @@ export function Dashboard({
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {!isAdmin && trendCatalog.length > 0 && trendMeta && (
+        <section className="trend-catalog" aria-labelledby="trend-catalog-title">
+          <header className="trend-catalog-head">
+            <div>
+              <span className="storefront-kicker">Google Trends · kaynaklı talep sinyalleri</span>
+              <h2 id="trend-catalog-title">Türkiye teknoloji talep kataloğu</h2>
+              <p>{trendMeta.scope}. {trendMeta.methodology}</p>
+            </div>
+            <span className="trend-total">{trendCatalog.length} sinyal</span>
+          </header>
+          <p className="trend-disclaimer">{trendMeta.disclaimer}</p>
+          <div className="trend-grid">
+            {trendPreview.map((item) => (
+              <article className="trend-item" key={item.id}>
+                <div className="trend-item-top">
+                  <span>{kindLabel[item.catalog_kind]}</span>
+                  <span>{item.anchor_term}</span>
+                </div>
+                <h3>{item.query}</h3>
+                <p>
+                  {item.signal_type === 'top'
+                    ? `Kaynak içi #${item.signal_rank} · göreli ilgi ${item.interest_value}/100`
+                    : `Yükselen #${item.signal_rank} · ${item.growth_label}`}
+                </p>
+                <footer>
+                  <a href={item.query_url} target="_blank" rel="noreferrer">Google Trends'te doğrula</a>
+                  {item.matched_product_id && (
+                    <button type="button" onClick={() => onOpenDetail(item.matched_product_id!)}>Takipteki ürünü gör</button>
+                  )}
+                </footer>
+              </article>
+            ))}
+          </div>
+          {trendCatalog.length > trendPreview.length && (
+            <button className="btn btn-ghost trend-more" type="button" onClick={() => setShowAllTrends(true)}>
+              {trendCatalog.length} sinyalin tamamını göster
+            </button>
+          )}
+          {showAllTrends && trendCatalog.length > 12 && (
+            <button className="btn btn-ghost trend-more" type="button" onClick={() => setShowAllTrends(false)}>
+              Kısa görünüme dön
+            </button>
+          )}
         </section>
       )}
 

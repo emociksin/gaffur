@@ -19,6 +19,7 @@ import {
 import { emailConfigured, escapeHtml, sendEmail } from './notifications/email';
 import { isAllowedPushEndpoint, webPushPublicConfig } from './notifications/web-push';
 import { getCatalogMetrics, refreshCatalogMatches, reviewMatchCandidate } from './catalog/matcher';
+import { listTrendCatalog, trendCatalogMeta, updateTrendCatalogItem } from './catalog/trends';
 
 const api = new Hono<{ Bindings: Env }>();
 
@@ -101,6 +102,7 @@ const PUBLIC_READS: RegExp[] = [
   /^\/api\/products\/\d+$/,
   /^\/api\/categories$/,
   /^\/api\/opportunities$/,
+  /^\/api\/trends\/catalog$/,
   /^\/api\/offers\/\d+\/logistics$/,
   /^\/api\/tax-rules$/,
 ];
@@ -330,6 +332,13 @@ api.get('/opportunities', async (c) => {
      LIMIT ?`
   ).bind(limit).all();
   return c.json({ opportunities: rows.results ?? [] });
+});
+
+// Faz 9: Google Trends kaynakli teknoloji talep katalogu. Bu kayitlar izlenen
+// urun/fiyat degil; kaynak kapsami ve goreli sinyal acikca birlikte doner.
+api.get('/trends/catalog', async (c) => {
+  const catalog = await listTrendCatalog(c.env, true);
+  return c.json({ catalog, meta: trendCatalogMeta(catalog.length) });
 });
 
 // ---- urunler ----
@@ -1176,6 +1185,43 @@ api.get('/catalog/matches', async (c) => {
 });
 
 api.get('/catalog/metrics', async (c) => c.json({ metrics: await getCatalogMetrics(c.env) }));
+
+api.get('/trends/catalog/admin', async (c) => {
+  const catalog = await listTrendCatalog(c.env, false);
+  return c.json({ catalog, meta: trendCatalogMeta(catalog.length) });
+});
+
+api.patch('/trends/catalog/:id', async (c) => {
+  const id = Number(c.req.param('id'));
+  if (!Number.isInteger(id) || id <= 0) return c.json({ error: 'Geçerli trend katalog kimliği gerekli' }, 400);
+  const body = await c.req.json<{
+    status?: string;
+    matched_product_id?: number | null;
+  }>().catch(() => ({} as { status?: string; matched_product_id?: number | null }));
+  if (body.status !== undefined && body.status !== 'published' && body.status !== 'hidden') {
+    return c.json({ error: 'Durum published veya hidden olmalıdır' }, 400);
+  }
+  if (body.matched_product_id !== undefined && body.matched_product_id !== null) {
+    const productId = Number(body.matched_product_id);
+    if (!Number.isInteger(productId) || productId <= 0) {
+      return c.json({ error: 'Geçerli ürün kimliği gerekli' }, 400);
+    }
+    body.matched_product_id = productId;
+  }
+  if (body.status === undefined && body.matched_product_id === undefined) {
+    return c.json({ error: 'Güncellenecek alan gerekli' }, 400);
+  }
+  try {
+    const item = await updateTrendCatalogItem(c.env, id, {
+      status: body.status as 'published' | 'hidden' | undefined,
+      matchedProductId: body.matched_product_id,
+    });
+    return c.json({ item });
+  } catch (error: any) {
+    const message = String(error?.message ?? error);
+    return c.json({ error: message }, message.includes('bulunamadı') ? 404 : 409);
+  }
+});
 
 api.post('/catalog/matches/refresh', async (c) => {
   return c.json({ result: await refreshCatalogMatches(c.env, now()) });

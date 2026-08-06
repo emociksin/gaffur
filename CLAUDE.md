@@ -103,6 +103,16 @@ kimlik ve adayları yeniler, onay/ret kararlarını korur. Scrapy/Python sınır
 JSONL sözleşme spike'ı `docs/adr-008-scrapy-matching-boundary.md` içindedir; üretime ikinci runtime
 eklenmemiştir.
 
+Faz 9 talep keşif katmanı `src/worker/catalog/trend-seeds.ts` ve `trends.ts` içindedir. Google
+Trends Türkiye / son 12 ay / Bilgisayarlar ve Elektronik Ürünler kapsamından elle doğrulanmış 50
+ürün, kategori, marka ve aksesuar sinyali tutulur. Bunlar fiyatı olan `products` kaydı değildir.
+Her sinyal kaynak terimini, kaynak içi sırasını, göreli 0–100 değerini veya yükseliş etiketini,
+snapshot tarihini ve Google Trends doğrulama URL'sini taşır. Farklı kaynak grupları arasında mutlak
+1–50 sıralaması iddia edilmez. Açılıştaki idempotent seed yönetici `published/hidden` ve gerçek ürün
+eşleştirme kararlarını korur. Public uç `/api/trends/catalog`, yönetim uçları
+`/api/trends/catalog/admin` ve `PATCH /api/trends/catalog/{id}`. Metodoloji:
+`docs/phase9-google-trends-methodology.md`.
+
 ## Kritik Bilgiler (2026-08-02 canlı doğrulamadan)
 
 - **Trendyol 2026 mimarisi değişti:** Arama/kategori verisi artık
@@ -139,7 +149,7 @@ eklenmemiştir.
 npm run dev        # sadece Vite (API proxy 8787'ye)
 npm start          # build + start:node (tam uygulama, lokal SQLite)
 npm run check      # iki tsconfig ile typecheck
-npm test           # vitest (99 test; tüm fazlar + Faz 8 katalog/eşleştirme)
+npm test           # vitest (106 test; tüm fazlar + Faz 9 kaynaklı trend kataloğu)
 npx tsx scripts/probe.ts <url>     # tek URL canlı çözümleme (Node'dan)
 npx tsx scripts/probe-sites.ts     # hangi siteler doğrudan erişime açık
 ```
@@ -170,6 +180,7 @@ DATABASE_URL=postgres://... npx tsx scripts/backfill-pg.ts
 - Yeni bağımlılık ekleme (`@crawlee/cheerio`, hono, react, react-dom, postgres dışında runtime bağımlılık yok; grafik SVG el yapımı).
 - UI metinleri basit Türkçe; emoji yok (▼▲◎ gibi unicode işaretler serbest).
 - Fiyat karşılaştırmaları 0.01 toleransla (`applyPriceUpdate`).
+- Google Trends sinyallerini mutlak arama hacmi, satış adedi veya kaynaklar arası kesin sıralama gibi gösterme.
 - `local `.wrangler/` state'i ve `dist/` git'e girmez.
 - Trendyol adaptörü bozulursa önce gerçek sayfada marker'ları kontrol et
   (bkz. Kritik Bilgiler) — `scripts/probe-listing.ts` hızlı teşhis içindir.

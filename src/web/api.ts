@@ -20,6 +20,9 @@ import type {
   ComplianceAssessment,
   CatalogMatchCandidate,
   CatalogMetrics,
+  TrendCatalogItem,
+  TrendCatalogMeta,
+  TrendCatalogStatus,
 } from '../shared/types';
 
 export class ApiError extends Error {
@@ -101,6 +104,7 @@ export const api = {
 
   summary: () => req<Summary>('/summary'),
   opportunities: () => req<{ opportunities: Opportunity[] }>('/opportunities'),
+  trendCatalog: () => req<{ catalog: TrendCatalogItem[]; meta: TrendCatalogMeta }>('/trends/catalog'),
   products: () => req<{ products: Product[] }>('/products'),
   product: (id: number, days = 90) =>
     req<{
@@ -154,6 +158,9 @@ export const api = {
   catalogMatches: (status: 'pending' | 'approved' | 'rejected' | 'stale' | 'all' = 'pending') =>
     req<{ matches: CatalogMatchCandidate[] }>(`/catalog/matches?status=${status}`),
   catalogMetrics: () => req<{ metrics: CatalogMetrics }>('/catalog/metrics'),
+  adminTrendCatalog: () => req<{ catalog: TrendCatalogItem[]; meta: TrendCatalogMeta }>('/trends/catalog/admin'),
+  updateTrendCatalogItem: (id: number, body: { status?: TrendCatalogStatus; matched_product_id?: number | null }) =>
+    req<{ item: TrendCatalogItem }>(`/trends/catalog/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
   refreshCatalogMatches: () =>
     req<{ result: { products: number; candidates: number; calculatedAt: number } }>('/catalog/matches/refresh', { method: 'POST' }),
   reviewCatalogMatch: (id: number, decision: 'approved' | 'rejected', representativeProductId?: number) =>

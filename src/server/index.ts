@@ -9,6 +9,7 @@ import { runScheduled } from '../worker/cron';
 import { LocalD1 } from './d1';
 import { PgD1 } from './pg';
 import type { Env } from '../worker/env';
+import { ensureTrendCatalogSeeds } from '../worker/catalog/trends';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..', '..');
@@ -109,6 +110,11 @@ const env = {
   PASSWORD: process.env.PASSWORD,
   ALLOW_OPEN: process.env.ALLOW_OPEN,
 } as unknown as Env;
+
+// Faz 9 katalogu deterministik ve kaynakli bir snapshot'tir. Migration'dan
+// sonra idempotent upsert edilir; yoneticinin gizleme/eslestirme kararlari korunur.
+const trendSeed = await ensureTrendCatalogSeeds(env);
+console.log('[trend-catalog] hazır:', trendSeed.seeded, 'kayıt');
 
 // ---- zamanlayici (cron trigger karsiligi) ----
 if (process.env.SCHEDULER_DISABLED !== '1') {

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Category, Opportunity, Product, Summary, Watch } from '../shared/types';
+import type { Category, Opportunity, Product, Summary, TrendCatalogItem, TrendCatalogMeta, Watch } from '../shared/types';
 import { isAdminPathname, publicProductPath } from '../shared/routes';
 import { api, type UserAccount } from './api';
 import { AccountModal, Login } from './Login';
@@ -33,6 +33,8 @@ export default function App() {
   const [cats, setCats] = useState<Category[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [trendCatalog, setTrendCatalog] = useState<TrendCatalogItem[]>([]);
+  const [trendMeta, setTrendMeta] = useState<TrendCatalogMeta | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [user, setUser] = useState<UserAccount | null>(null);
   const [showAccount, setShowAccount] = useState(false);
@@ -46,11 +48,18 @@ export default function App() {
 
   const refresh = useCallback(async () => {
     try {
-      const [p, c, s, o] = await Promise.all([api.products(), api.categories(), api.summary(), api.opportunities()]);
+      const [p, c, s, o, trends] = await Promise.all([
+        api.products(), api.categories(), api.summary(), api.opportunities(),
+        api.trendCatalog().catch(() => null),
+      ]);
       setProducts(p.products);
       setCats(c.categories);
       setSummary(s);
       setOpportunities(o.opportunities);
+      if (trends) {
+        setTrendCatalog(trends.catalog);
+        setTrendMeta(trends.meta);
+      }
     } catch {
       /* oturum dusmus olabilir; event zaten yakalanir */
     }
@@ -235,6 +244,8 @@ export default function App() {
             cats={cats}
             summary={summary}
             opportunities={opportunities}
+            trendCatalog={trendCatalog}
+            trendMeta={trendMeta}
             onOpenDetail={openProduct}
             onAdd={() => setShowAdd(true)}
             refresh={refresh}
@@ -244,7 +255,7 @@ export default function App() {
         )}
         {activeTab === 'bildirim' && <NotificationsPage onOpenProduct={setDetailId} refreshGlobal={refresh} />}
         {activeTab === 'uyum' && <CompliancePage onOpenProduct={setDetailId} />}
-        {activeTab === 'katalog' && <CatalogPage onOpenProduct={setDetailId} />}
+        {activeTab === 'katalog' && <CatalogPage onOpenProduct={setDetailId} products={products ?? []} />}
         {activeTab === 'ayar' && <SettingsPage open={auth.open} />}
       </main>
 

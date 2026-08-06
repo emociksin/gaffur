@@ -247,6 +247,43 @@ export interface CatalogMetrics {
   minimumReviewSample: number;
 }
 
+export type TrendCatalogKind = 'product_family' | 'category' | 'brand' | 'accessory';
+export type TrendSignalType = 'top' | 'rising';
+export type TrendCatalogStatus = 'published' | 'hidden';
+
+export interface TrendCatalogItem {
+  id: number;
+  query: string;
+  normalized_query: string;
+  catalog_kind: TrendCatalogKind;
+  anchor_term: string;
+  anchor_rank: number | null;
+  anchor_interest: number | null;
+  signal_type: TrendSignalType;
+  signal_rank: number;
+  interest_value: number | null;
+  growth_label: string | null;
+  geo: 'TR';
+  timeframe: string;
+  category_label: string;
+  source_url: string;
+  query_url: string;
+  status: TrendCatalogStatus;
+  matched_product_id: number | null;
+  matched_product_title: string | null;
+  captured_at: number;
+  updated_at: number;
+}
+
+export interface TrendCatalogMeta {
+  source: 'Google Trends';
+  scope: string;
+  capturedAt: number;
+  total: number;
+  methodology: string;
+  disclaimer: string;
+}
+
 export interface Watch {
   id: number;
   user_id: number;

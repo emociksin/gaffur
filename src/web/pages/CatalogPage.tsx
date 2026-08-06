@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react';
-import type { CatalogMatchCandidate, CatalogMatchProduct, CatalogMetrics } from '../../shared/types';
+import type {
+  CatalogMatchCandidate,
+  CatalogMatchProduct,
+  CatalogMetrics,
+  Product,
+  TrendCatalogItem,
+  TrendCatalogMeta,
+  TrendCatalogStatus,
+} from '../../shared/types';
 import { api } from '../api';
 import { money } from '../format';
 import { IconRefresh, Spinner, useToast } from '../ui';
@@ -28,17 +36,26 @@ function IdentityCard({ product, onOpen }: { product: CatalogMatchProduct; onOpe
   );
 }
 
-export function CatalogPage({ onOpenProduct }: { onOpenProduct: (id: number) => void }) {
+export function CatalogPage({ onOpenProduct, products }: { onOpenProduct: (id: number) => void; products: Product[] }) {
   const toast = useToast();
   const [matches, setMatches] = useState<CatalogMatchCandidate[] | null>(null);
   const [metrics, setMetrics] = useState<CatalogMetrics | null>(null);
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState<number | null>(null);
+  const [trends, setTrends] = useState<TrendCatalogItem[]>([]);
+  const [trendMeta, setTrendMeta] = useState<TrendCatalogMeta | null>(null);
+  const [updatingTrend, setUpdatingTrend] = useState<number | null>(null);
 
   const load = async () => {
-    const [queue, measurement] = await Promise.all([api.catalogMatches('pending'), api.catalogMetrics()]);
+    const [queue, measurement, demand] = await Promise.all([
+      api.catalogMatches('pending'), api.catalogMetrics(), api.adminTrendCatalog().catch(() => null),
+    ]);
     setMatches(queue.matches);
     setMetrics(measurement.metrics);
+    if (demand) {
+      setTrends(demand.catalog);
+      setTrendMeta(demand.meta);
+    }
   };
 
   useEffect(() => {
@@ -74,6 +91,22 @@ export function CatalogPage({ onOpenProduct }: { onOpenProduct: (id: number) => 
     }
   };
 
+  const updateTrend = async (
+    item: TrendCatalogItem,
+    patch: { status?: TrendCatalogStatus; matched_product_id?: number | null }
+  ) => {
+    setUpdatingTrend(item.id);
+    try {
+      const result = await api.updateTrendCatalogItem(item.id, patch);
+      setTrends((current) => current.map((row) => row.id === item.id ? result.item : row));
+      toast('Talep katalog kaydı güncellendi', 'ok');
+    } catch (error: any) {
+      toast(error?.message ?? 'Talep katalog kaydı güncellenemedi', 'err');
+    } finally {
+      setUpdatingTrend(null);
+    }
+  };
+
   return (
     <div className="catalog-page">
       <section className="catalog-head">
@@ -101,6 +134,55 @@ export function CatalogPage({ onOpenProduct }: { onOpenProduct: (id: number) => 
           </div>
         </section>
       )}
+
+      {trendMeta && <section className="trend-admin">
+        <header>
+          <div>
+            <span className="storefront-kicker">Faz 9 · talep keşfi</span>
+            <h2>Google Trends teknoloji kataloğu</h2>
+            <p>
+              {trendMeta.scope}. Bu liste mutlak arama hacmi sıralaması değildir; her değer yalnız kendi kaynak terimi
+              içindeki göreli ilgiyi gösterir. Kaydı vitrinden gizleyebilir veya gerçek bir takip ürünüyle ilişkilendirebilirsin.
+            </p>
+          </div>
+          <span className="trend-total">{trends.filter((item) => item.status === 'published').length}/{trends.length} yayında</span>
+        </header>
+        <div className="trend-admin-list">
+          {trends.map((item) => (
+            <article className={`trend-admin-row ${item.status === 'hidden' ? 'is-hidden' : ''}`} key={item.id}>
+              <div className="trend-admin-name">
+                <b>{item.query}</b>
+                <span>
+                  {item.anchor_term} · {item.signal_type === 'top'
+                    ? `#${item.signal_rank}, ${item.interest_value}/100`
+                    : `yükselen #${item.signal_rank}, ${item.growth_label}`}
+                </span>
+              </div>
+              <a href={item.source_url} target="_blank" rel="noreferrer">Kaynak grup</a>
+              <select
+                aria-label={`${item.query} için takip ürünü`}
+                value={item.matched_product_id ?? ''}
+                disabled={updatingTrend === item.id}
+                onChange={(event) => updateTrend(item, {
+                  matched_product_id: event.target.value ? Number(event.target.value) : null,
+                })}
+              >
+                <option value="">Takip ürünü yok</option>
+                {products.map((product) => <option value={product.id} key={product.id}>{product.title}</option>)}
+              </select>
+              <button
+                className="btn btn-ghost btn-sm"
+                type="button"
+                disabled={updatingTrend === item.id}
+                onClick={() => updateTrend(item, { status: item.status === 'published' ? 'hidden' : 'published' })}
+              >
+                {updatingTrend === item.id ? <Spinner size={12} /> : null}
+                {item.status === 'published' ? 'Vitrinden gizle' : 'Yayınla'}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>}
 
       {matches == null ? (
         <div className="loading-block"><Spinner size={22} /></div>
