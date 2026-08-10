@@ -40,4 +40,10 @@ export interface Env {
    * Prod'da ASLA tanimlanmamalidir.
    */
   ALLOW_OPEN?: string;
+  /**
+   * "1" ise site tamamen kapali sayilir: /api/health disinda her yol
+   * 410 Gone + noindex doner ve cron devre disi kalir. Kaldirinca uygulama
+   * eski haline doner. Coolify degiskeninden yonetilir.
+   */
+  OFFLINE_MODE?: string;
 }

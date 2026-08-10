@@ -109,6 +109,7 @@ const env = {
   VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
   PASSWORD: process.env.PASSWORD,
   ALLOW_OPEN: process.env.ALLOW_OPEN,
+  OFFLINE_MODE: process.env.OFFLINE_MODE,
 } as unknown as Env;
 
 // Faz 9 katalogu deterministik ve kaynakli bir snapshot'tir. Migration'dan
@@ -117,8 +118,10 @@ const trendSeed = await ensureTrendCatalogSeeds(env);
 console.log('[trend-catalog] hazır:', trendSeed.seeded, 'kayıt');
 
 // ---- zamanlayici (cron trigger karsiligi) ----
-// SITE KAPALI: cron devre dışı. Yeniden açılırken ilk koşulu geri getir.
-if (false && process.env.SCHEDULER_DISABLED !== '1') {
+// OFFLINE_MODE=1 ise site kapali, scrape gereksiz; cron da atlanir.
+if (process.env.OFFLINE_MODE === '1') {
+  console.log('[cron] OFFLINE_MODE aktif — devre dışı');
+} else if (process.env.SCHEDULER_DISABLED !== '1') {
   const tick = () => {
     runScheduled(env).catch((e) => console.error('[cron]', e));
   };
