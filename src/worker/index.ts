@@ -43,6 +43,16 @@ const OFFLINE_HEADERS = {
   'referrer-policy': 'no-referrer',
 } as const;
 
+// Coolify/Docker healthcheck: konteynerin ayakta olduğunu göstermesi için
+// bu yol 200 dönmeli, yoksa healthcheck başarısız → deployment failed.
+// Yanıt hâlâ noindex, arama motorlarına sızmaz.
+app.get('/api/health', () =>
+  new Response('ok', {
+    status: 200,
+    headers: { 'content-type': 'text/plain; charset=utf-8', 'x-robots-tag': 'noindex, nofollow', 'cache-control': 'no-store' },
+  })
+);
+
 app.all('*', () =>
   new Response(OFFLINE_HTML, { status: 410, headers: { ...OFFLINE_HEADERS } })
 );
