@@ -117,7 +117,8 @@ const trendSeed = await ensureTrendCatalogSeeds(env);
 console.log('[trend-catalog] hazır:', trendSeed.seeded, 'kayıt');
 
 // ---- zamanlayici (cron trigger karsiligi) ----
-if (process.env.SCHEDULER_DISABLED !== '1') {
+// SITE KAPALI: cron devre dışı. Yeniden açılırken ilk koşulu geri getir.
+if (false && process.env.SCHEDULER_DISABLED !== '1') {
   const tick = () => {
     runScheduled(env).catch((e) => console.error('[cron]', e));
   };
